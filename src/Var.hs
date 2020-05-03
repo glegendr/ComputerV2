@@ -7,6 +7,8 @@ import Data.Char
 import Data.List
 import Debug.Trace
 import Data.HashMap.Strict as Hm (HashMap, member, (!))
+import Bracket
+import Polish
 
 {-- MATRICE --}
 
@@ -94,33 +96,53 @@ checkRat lst hm
         return Void
     | otherwise = return (Rat "" 0) 
     where
-        newLst = toRatToken hm lst
-
-toRatToken :: HashMap String Var -> [Token] -> [Token]
-toRatToken _ [] = []
-toRatToken hm (x@(Op _):(Op Minus):y@(Numb _ _):xs) = x : appMinus y : toRatToken hm xs
-toRatToken hm (x@(Op _):y@(Op Minus):z@(Var name):xs)
-    | member name hm = case hm ! name of
-        (Rat _ value) -> x : appMinus (Numb value 0) : toRatToken hm xs
-        _ -> x : y : z : toRatToken hm xs
-toRatToken hm (x@(Var name):xs)
-    | member name hm = case hm ! name of
-        (Rat _ value) -> (Numb value 0) : toRatToken hm xs
-        _ -> x : toRatToken hm xs
-toRatToken hm (x:y@(Op Minus):z:xs) = x : y : z : toRatToken hm xs
-toRatToken hm ((Op Minus):x@(Numb _ _):xs) = appMinus x : toRatToken hm xs
-toRatToken hm (x@(Op Minus):y@(Var name):xs)
-    | member name hm = case hm ! name of
-        (Rat _ value) -> appMinus (Numb value 0) : toRatToken hm xs
-        _ -> x : y : toRatToken hm xs
-toRatToken hm (x@(Numb _ _):y@(Var name):xs)
-    | member name hm = case hm ! name of
-        (Rat _ value) -> x : (Op Mult) : (Numb value 0) : toRatToken hm xs
-        _ -> x : y : toRatToken hm xs
-toRatToken hm (x@(Op _):xs) = x : toRatToken hm xs
-toRatToken hm (x:xs) = x : toRatToken hm xs
+        newLst = toBasictoken hm lst ""
 
 {-- IMAGINARY --}
+
+checkIma :: [Token] -> HashMap String Var -> IO Var
+checkIma lst hm
+    | any isVar newLst = do
+        let (Just x) = find isVar newLst
+        putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
+        return Void
+    | powerI newLst = do
+        putStrLn "Error: powered i is invalid"
+        return Void
+    | otherwise = return (Ima "" []) 
+    where
+        newLst = toBasictoken hm lst "i"
+        powerI :: [Token] -> Bool
+        powerI [] = False
+        powerI ((Numb _ b):(Op Pow):xs)
+            | b /= 0 = True
+        powerI (x:xs) = powerI xs
+
+{-- MANAGER --}
+
+varToNumb :: HashMap String Var -> String -> Token -> Token 
+varToNumb hm except x@(Var name)
+    | name == except = (Numb 1 1)
+    | member name hm = case hm ! name of
+        (Rat _ value) -> (Numb value 0)
+        _ -> x 
+varToNumb _ _ x  = x 
+
+toBasictoken :: HashMap String Var -> [Token] -> String -> [Token]
+toBasictoken hm tk except = 
+    let maped = map (varToNumb hm except) tk
+        ret = case maped of
+            ((Op Minus):x1:xs) -> appMinus x1 : xs
+            _ -> maped
+    in toBasictoken2 ret
+    where
+        toBasictoken2 :: [Token] -> [Token]
+        toBasictoken2 [] = []
+        toBasictoken2 (x@(Op _):(Op Minus):y@(Numb _ _):xs) = x : appMinus y : toBasictoken2 xs
+        toBasictoken2 (x@(Numb _ _):y@(Numb _ _):xs) = x : Op Mult : y : toBasictoken2 xs
+        toBasictoken2 (x@(Op CloseBracket):y@(Numb _ _):xs) = x : Op Mult : y : toBasictoken2 xs
+        toBasictoken2 (x@(Numb _ _):y@(Op OpenBracket):xs) = x : Op Mult : y : toBasictoken2 xs
+        toBasictoken2 (x:xs) = x : toBasictoken2 xs
 
 form :: [Token] -> [Token]
 form [] = []
@@ -133,9 +155,13 @@ toVar lst hm = toVar2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile (/= (Op 
     where
         toVar2 :: [Token] -> [Token] -> HashMap String Var -> Var
         toVar2 ((Var name):[]) lst hm
-            -- | (Var "i") `elem` lst = Ima name (toIma $ formIma lst)
+            | (Var "i") `elem` lst =
+                let tmp = solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst "i"
+                in Ima name tmp
             | (Var "[") `elem` lst = Mat name (toMat lst hm)
-            | otherwise = Rat name (simpleReduce $ toRatToken hm lst)
+            | otherwise =
+                let tmp = simpleReduce $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst ""
+                in Rat name tmp
         toVar2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst _ = Fct name var (form lst)
         toVar2 _ _ _ = Void
 
@@ -147,7 +173,7 @@ checkType lst hm = checkType2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile 
             | any (\x -> not $ isLetter x) name || name == "i" = do
                 putStrLn "Wrong var name"
                 return (Void)
-            -- | (Var "i") `elem` lst = Ima name (toIma $ formIma lst)
+            | (Var "i") `elem` lst = checkIma lst hm
             | (Var "[") `elem` lst = checkMat lst hm
             | otherwise = checkRat lst hm
         checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = return (Fct name var (form lst))

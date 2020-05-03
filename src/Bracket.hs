@@ -1,9 +1,9 @@
-module ListNM
+module Bracket
 (genListNM
 , listXPow
 , delBracket
 , smallReduce
-, toPositiv)where
+, multinomialResolution)where
 
 import Token
 import Data
@@ -11,13 +11,13 @@ import Data.List
 import Debug.Trace
 import Polish
 
-addList :: [Int] -> [[Int]]
-addList [] = []
-addList lst
-    | lst == take n [n,n..] = lst : []
-    | otherwise = lst : addList (addList2 n lst False)
+addList :: Int -> [Int] -> [[Int]]
+addList _ [] = []
+addList n lst
+    | lst == (take takeIt [0,0..] ++ [n]) = lst : []
+    | otherwise = lst : addList n (addList2 n lst False)
     where
-        n = length lst
+        takeIt = (length lst - 1) 
         addList2 :: Int -> [Int] -> Bool -> [Int]   
         addList2 _ [] _ = []
         addList2 n (x:x1:xs) b
@@ -28,9 +28,9 @@ addList lst
         addList2 n (x:xs) False = (x + 1) : addList2 n xs True
 
 genListNM :: Int -> Int -> [[Int]]
-genListNM n m = [x | x <- addList $ take m [0,0..], sum x == n]
+genListNM n m = [x | x <- addList n $ take m [0,0..], sum x == n]
 
-factorial :: Int -> Int
+factorial :: Float -> Float
 factorial 0 = 1
 factorial n = n * factorial (n - 1)
 
@@ -40,18 +40,16 @@ listXPow lst pow = [x | x@(Numb a b) <- listXPow2 lst pow (genListNM pow (length
         listXPow2 :: [Token] -> Int -> [[Int]] -> [Token] 
         listXPow2 _ _ [] = []
         listXPow2 lst pow (x:xs) =
-            let factorialRet = intToToken $ div (factorial pow) (product $ map factorial x)
+            let factorialRet = floatToToken $ (factorial (realToFrac pow)) / (product $ map factorial $ map realToFrac x)
                 powRet = foldl1 multToken $ map (\(x, y) -> powToken x (intToToken y)) (zip lst x)
-            in multToken factorialRet powRet : listXPow2 lst pow xs
-
-toPositiv :: [Token] -> [Token]
-toPositiv [] = []
-toPositiv ((Op Minus):x:xs) = (Op Add) : appMinus x : toPositiv xs
-toPositiv (x:xs) = x : toPositiv xs
+                ret = multToken factorialRet powRet
+            in ret : listXPow2 lst pow xs
 
 multinomialResolution :: [Token] -> Token -> [Token]
-multinomialResolution lst (Numb x 0) = intersperse (Op Add) $ listXPow (filter isNumb (toPositiv lst)) (round x)
-multinomialResolution lst _ = lst
+multinomialResolution lst (Numb x 0) =
+    let ret = listXPow (filter isNumb (toPositiv lst)) (round x)
+    in intersperse (Op Add) ret
+multinomialResolution lst _ = [UnParsed]
 
 binomialResolution :: [Token] -> Token -> [Token]
 binomialResolution lst (Numb n 0) = intersperse (Op Add) $ binomialSum 0 (round n) (filter isNumb (toPositiv lst))
@@ -60,7 +58,7 @@ binomialResolution lst (Numb n 0) = intersperse (Op Add) $ binomialSum 0 (round 
         binomialSum k n lst@(x:y:[])
             | k > n = []
             | otherwise =
-                let factorialRet = intToToken $ div (factorial n) (factorial (n - k) * factorial k)
+                let factorialRet = floatToToken $ (factorial (realToFrac n)) / (factorial (realToFrac (n - k)) * factorial (realToFrac k))
                     powRet = multToken (powToken x (intToToken (n - k))) (powToken y (intToToken k))
                 in multToken factorialRet powRet : binomialSum (k + 1) n lst
         binomialSum _ _ _ = []
@@ -126,14 +124,14 @@ delBracket lst =
             let (b, ret) = resolveOpBracket inBr op value
             in 
                 case (b, befBr) of
-                    (True, (x:x1:xs)) -> trace ("ONE:\nOPS: " ++ show op ++ show op2 ++ "\nBEF: " ++ showTkList befBr ++ "\nIN: " ++ showTkList inBr ++ "\nAFT: " ++ showTkList aftBr ++ "\n") $ (delBracket ((init $ init befBr) ++ ret ++ aftBr))
-                    _ -> trace ("ONE:\nOPS: " ++ show op ++ show op2 ++ "\nBEF: " ++ showTkList befBr ++ "\nIN: " ++ showTkList inBr ++ "\nAFT: " ++ showTkList aftBr ++ "\n") $ (delBracket (befBr ++ ret ++ aftBr))
+                    (True, (x:x1:xs)) -> delBracket ((init $ init befBr) ++ ret ++ aftBr)
+                    _ -> delBracket (befBr ++ ret ++ aftBr)
         else
             let (b, ret) = resolveOpBracket inBr op2 value2
             in 
                 case (b, aftBr) of
-                    (True, (x:x1:xs)) -> trace ("TWO:\nOPS: " ++ show op ++ show op2 ++ "\nBEF: " ++ showTkList befBr ++ "\nIN: " ++ showTkList inBr ++ "\nAFT: " ++ showTkList aftBr ++ "\n") $ (delBracket (befBr ++ ret ++ (drop 2 aftBr)))
-                    _ -> trace ("TWO:\nOPS: " ++ show op ++ show op2 ++ "\nBEF: " ++ showTkList befBr ++ "\nIN: " ++ showTkList inBr ++ "\nAFT: " ++ showTkList aftBr ++ "\n") $ (befBr ++ delBracket (ret ++ aftBr))
+                    (True, (x:x1:xs)) -> delBracket (befBr ++ ret ++ (drop 2 aftBr))
+                    _ -> befBr ++ delBracket (ret ++ aftBr)
 
 resolveOpBracket :: [Token] -> Token -> Token -> (Bool, [Token])
 resolveOpBracket lst (Op Add) _ = (False, tail $ init $ lst)

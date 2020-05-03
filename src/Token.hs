@@ -10,6 +10,7 @@ module Token
 , isOp
 , isVar
 , isNumb
+, isNotOp
 , showTkList0
 , allOperatorString
 , addToken
@@ -18,11 +19,14 @@ module Token
 , divToken
 , powToken
 , modToken
+, makeItRedable
+, toPositiv
 ) where
 
 import Data.List.Split
 import Data.Char
 import Data
+import Data.List
 import Data.Fixed
 
 allOperatorString = [(show Add, Add), (show Minus, Minus), (show Mult, Mult), (show Div, Div), (show Pow, Pow), (show Mod, Mod), (show Equal, Equal), (show OpenBracket, OpenBracket), (show CloseBracket, CloseBracket)]
@@ -147,3 +151,31 @@ toToken str
         isOperator str
             | str `elem` map (\(x, y) -> x) allOperatorString = True
             | otherwise = False
+
+isNotOp = not . isOp
+
+delSameExpo :: Token -> [Token] -> [Token]
+delSameExpo _ [] = []
+delSameExpo x@(Numb _ a) (y@(Numb _ b):xs)
+    | a == b = delSameExpo x xs
+    | otherwise = y : delSameExpo x xs
+delSameExpo _ _ = [UnParsed]
+
+toPositiv :: [Token] -> [Token]
+toPositiv [] = []
+toPositiv ((Op Minus):x:xs) = (Op Add) : appMinus x : toPositiv xs
+toPositiv (x:xs) = x : toPositiv xs
+
+addAll :: [Token] -> [Token]
+addAll [] = []
+addAll (x:xs) = foldl addToken x xs : addAll (delSameExpo x xs)
+
+makeItRedable :: [Token] -> [Token]
+makeItRedable = changeOp . intersperse (Op Add) . reverse . sortOn (\(Numb _ x) -> x) . addAll . filter isNotOp . toPositiv
+    where
+        changeOp :: [Token] -> [Token]
+        changeOp [] = []
+        changeOp (a@(Op _):b@(Numb x _):xs)
+            | x < 0 = Op Minus : appMinus b : changeOp xs
+            | otherwise = a : b : changeOp xs
+        changeOp (x:xs) = x : changeOp xs

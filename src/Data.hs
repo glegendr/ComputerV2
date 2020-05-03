@@ -16,7 +16,7 @@ import Data.List
 data Var = Rat !String !Float | Ima !String ![Token] | Mat !String ![[Float]] | Fct !String !String ![Token] | Void
 instance Show (Var) where
     show (Rat name value) = name ++ " = " ++ show value
-    show (Ima name value) = name ++ " = " ++ showTkList value
+    show (Ima name value) = name ++ " = " ++ showTkListName "i" value
     show (Mat name tab) = name ++ " = " ++ show tab
     show (Fct name var value) = name ++ "(" ++ var ++ ") = " ++ showTkList value
     show Void = "Error Input"
@@ -54,6 +54,7 @@ showTkListName name ((Numb x y):xs)
     | x == (-1) && y == 1 = "-" ++ name ++ " " ++ showTkListName name xs
     | x == 1 && y /= 0 = name ++ "^" ++ show y ++ " " ++ showTkListName name xs
     | x == (-1) && y /= 0 = "-" ++ name ++ "^" ++ show y ++ " " ++ showTkListName name xs
+    | y == 1 = show x ++ name ++ " " ++ showTkListName name xs
     | y /= 0 = show x ++ name ++ "^" ++ show y ++ " " ++ showTkListName name xs
     | otherwise = show x ++ " " ++ showTkListName name xs
 showTkListName name (x:xs) = show x ++ " " ++ showTkListName name xs
@@ -71,7 +72,7 @@ putVarLn = putStrLn . showVar
 
 showVar :: Var -> String
 showVar (Rat _ v) = "  " ++ show v
-showVar (Ima _ v) = "  " ++ showTkList v
+showVar (Ima _ v) = "  " ++ showTkListName "i" v 
 showVar (Mat _ v) = showMat v
 showVar (Fct _ _ v) = "  " ++ showTkList v
 showVar x = show x

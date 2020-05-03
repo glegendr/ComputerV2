@@ -9,7 +9,7 @@ import System.IO
 import Var
 import Data
 import Data.HashMap.Strict as Hm (HashMap, empty, insert, foldl')
-import ListNM
+import Bracket
 
 printEnd :: [Token] -> IO ()
 printEnd tkLst = do
@@ -46,42 +46,30 @@ getActFromUser hm = do
                     Void -> getActFromUser hm
                     _ -> do
                         let tmp = toVar tk hm
-                        putVarLn tmp
-                        getActFromUser $ Hm.insert (getName tmp) tmp hm
+                        checkError tmp hm
             where str = map toLower x  
+
+checkError (Ima _ x) hm
+    | getExpo x > 1 || getExpo x < 0 = do
+        putStrLn "Error: powered i is invalid"
+        getActFromUser hm
+checkError var hm = do
+    putVarLn var
+    getActFromUser $ Hm.insert (getName var) var hm
 
 transformX :: [Token] -> [Token]
 transformX [] = []
 transformX ((Var "x"):xs) = (Numb 1 1) : transformX xs
 transformX (x:xs) = x : transformX xs
 
-delSameExpo :: Token -> [Token] -> [Token]
-delSameExpo _ [] = []
-delSameExpo x@(Numb _ a) (y@(Numb _ b):xs)
-    | a == b = delSameExpo x xs
-    | otherwise = y : delSameExpo x xs
-delSameExpo _ _ = [UnParsed]
-
-addAll :: [Token] -> [Token]
-addAll [] = []
-addAll (x:xs) = foldl addToken x xs : addAll (delSameExpo x xs)
-
-isNotOp = not . isOp
-
-makeItRedable :: [Token] -> [Token]
-makeItRedable = changeOp . intersperse (Op Add) . reverse . sortOn (\(Numb _ x) -> x) . addAll . filter isNotOp . toPositiv
-    where
-        changeOp :: [Token] -> [Token]
-        changeOp [] = []
-        changeOp (a@(Op _):b@(Numb x _):xs)
-            | x < 0 = Op Minus : appMinus b : changeOp xs
-            | otherwise = a : b : changeOp xs
-        changeOp (x:xs) = x : changeOp xs
-
 main = do
-    -- getActFromUser empty
-    args <- getArgs
-    putStrLn $ showTkListName "x" $ makeItRedable $ delBracket $ smallReduce $ transformX $ stringTotokenLst $ args !! 0
+    getActFromUser empty
+    -- args <- getArgs
+    -- let tkLst = smallReduce $ transformX $ stringTotokenLst $ args !! 0
+    -- let pow = read $ args !! 1
+    -- putStrLn $ showTkListName "x" tkLst
+    --                  putStrLn $ showTkListName "x" $ makeItRedable $ multinomialResolution tkLst $ intToToken pow
+    -- print $ makeItRedable $ delBracket tkLst
     -- case args of
     --     [] -> putStrLn "Please give me an input"
     --     (x:[]) ->  printEnd $ getAll x

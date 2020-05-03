@@ -2,7 +2,8 @@ module Polish
 (toPolish
 , toNormal
 , reduce
-, isCompatible)where
+, isCompatible
+, solvePolish)where
 
 import Token
 import Data
@@ -58,3 +59,6 @@ toNormal :: [Token] -> [Token]
 toNormal [] = []
 toNormal (x@(Numb _ _):x1@(Numb _ _):x2@(Op _):xs) = toNormal $ x:x2:x1:xs
 toNormal (x:xs) = x : toNormal xs
+
+solvePolish :: [Token] -> [Token]
+solvePolish = toNormal . reduce . toPolish
