@@ -118,6 +118,21 @@ checkIma lst hm
             | b /= 0 = True
         powerI (x:xs) = powerI xs
 
+{-- FUNCTION --}
+
+checkFunction :: String -> [Token] -> HashMap String Var -> IO Var
+checkFunction name lst hm
+    | name == "i" = do
+        putStrLn "Wrong var name"
+        return Void
+    | any isVar newLst = do
+        let (Just x) = find isVar newLst
+        putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
+        return Void
+    | otherwise = return (Fct "" "" [])
+    where
+        newLst = toBasictoken hm lst name
+
 {-- MANAGER --}
 
 varToNumb :: HashMap String Var -> String -> Token -> Token 
@@ -162,7 +177,9 @@ toVar lst hm = toVar2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile (/= (Op 
             | otherwise =
                 let tmp = simpleReduce $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst ""
                 in Rat name tmp
-        toVar2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst _ = Fct name var (form lst)
+        toVar2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm =
+            let tmp = solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst var
+            in Fct name var tmp
         toVar2 _ _ _ = Void
 
 checkType :: [Token] -> HashMap String Var -> IO Var
@@ -176,7 +193,7 @@ checkType lst hm = checkType2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile 
             | (Var "i") `elem` lst = checkIma lst hm
             | (Var "[") `elem` lst = checkMat lst hm
             | otherwise = checkRat lst hm
-        checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = return (Fct name var (form lst))
+        checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = checkFunction var lst hm
         checkType2 _ _ _ = do
             putStrLn "Error: No founded patern"
             return (Void)

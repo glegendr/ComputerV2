@@ -18,7 +18,7 @@ instance Show (Var) where
     show (Rat name value) = name ++ " = " ++ show value
     show (Ima name value) = name ++ " = " ++ showTkListName "i" value
     show (Mat name tab) = name ++ " = " ++ show tab
-    show (Fct name var value) = name ++ "(" ++ var ++ ") = " ++ showTkList value
+    show (Fct name var value) = name ++ "(" ++ var ++ ") = " ++ showTkListName var value
     show Void = "Error Input"
 
 data Token = Op !Operator | Numb !Float !Int | Var !String | UnParsed deriving (Eq)
@@ -74,7 +74,7 @@ showVar :: Var -> String
 showVar (Rat _ v) = "  " ++ show v
 showVar (Ima _ v) = "  " ++ showTkListName "i" v 
 showVar (Mat _ v) = showMat v
-showVar (Fct _ _ v) = "  " ++ showTkList v
+showVar (Fct _ var v) = "  " ++ showTkListName var v
 showVar x = show x
 
 isRat :: Var -> Bool
