@@ -9,6 +9,7 @@ import System.IO
 import Var
 import Data
 import Data.HashMap.Strict as Hm (HashMap, empty, insert, foldl')
+import ListNM
 
 printEnd :: [Token] -> IO ()
 printEnd tkLst = do
@@ -33,7 +34,7 @@ getActFromUser hm = do
         matchMove x
             | str == "quit" = exitWith ExitSuccess
             | str == "list" = do
-                putStrLn $ Hm.foldl' (\acc x -> if acc == "" then acc ++ "  " ++ show x else acc ++ "\n  " ++ show x) "" hm
+                putStr $ showVarMap hm
                 getActFromUser hm
             | str == "help" = do
                 putStrLn "THIS IS HELP"
@@ -49,9 +50,38 @@ getActFromUser hm = do
                         getActFromUser $ Hm.insert (getName tmp) tmp hm
             where str = map toLower x  
 
+transformX :: [Token] -> [Token]
+transformX [] = []
+transformX ((Var "x"):xs) = (Numb 1 1) : transformX xs
+transformX (x:xs) = x : transformX xs
+
+delSameExpo :: Token -> [Token] -> [Token]
+delSameExpo _ [] = []
+delSameExpo x@(Numb _ a) (y@(Numb _ b):xs)
+    | a == b = delSameExpo x xs
+    | otherwise = y : delSameExpo x xs
+delSameExpo _ _ = [UnParsed]
+
+addAll :: [Token] -> [Token]
+addAll [] = []
+addAll (x:xs) = foldl addToken x xs : addAll (delSameExpo x xs)
+
+isNotOp = not . isOp
+
+makeItRedable :: [Token] -> [Token]
+makeItRedable = changeOp . intersperse (Op Add) . reverse . sortOn (\(Numb _ x) -> x) . addAll . filter isNotOp . toPositiv
+    where
+        changeOp :: [Token] -> [Token]
+        changeOp [] = []
+        changeOp (a@(Op _):b@(Numb x _):xs)
+            | x < 0 = Op Minus : appMinus b : changeOp xs
+            | otherwise = a : b : changeOp xs
+        changeOp (x:xs) = x : changeOp xs
+
 main = do
-    getActFromUser empty
-    -- args <- getArgs
+    -- getActFromUser empty
+    args <- getArgs
+    putStrLn $ showTkListName "x" $ makeItRedable $ delBracket $ smallReduce $ transformX $ stringTotokenLst $ args !! 0
     -- case args of
     --     [] -> putStrLn "Please give me an input"
     --     (x:[]) ->  printEnd $ getAll x

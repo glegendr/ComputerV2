@@ -3,11 +3,15 @@ module Var (toVar, checkType, getName) where
 import Token
 import Parsing
 import Data
+import Data.Char
+import Data.List
 import Debug.Trace
 import Data.HashMap.Strict as Hm (HashMap, member, (!))
 
-formMat :: [Token] -> HashMap String Var -> IO Var
-formMat lst hm
+{-- MATRICE --}
+
+checkMat :: [Token] -> HashMap String Var -> IO Var
+checkMat lst hm
     | checkOp newLst =  do
         putStrLn $ "Error: Non expected operator"
         return Void
@@ -80,8 +84,43 @@ toMat x hm = read $ showTkList $ toMatToken hm $ map toComma x
         toComma (Var ";") = Var ","
         toComma x = x
 
-formRat :: [Token] -> HashMap String Var -> IO Var
-formRat  _ _ = return Void
+{-- RATIONAL --}
+
+checkRat :: [Token] -> HashMap String Var -> IO Var
+checkRat lst hm
+    | any isVar newLst = do
+        let (Just x) = find isVar newLst
+        putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
+        return Void
+    | otherwise = return (Rat "" 0) 
+    where
+        newLst = toRatToken hm lst
+
+toRatToken :: HashMap String Var -> [Token] -> [Token]
+toRatToken _ [] = []
+toRatToken hm (x@(Op _):(Op Minus):y@(Numb _ _):xs) = x : appMinus y : toRatToken hm xs
+toRatToken hm (x@(Op _):y@(Op Minus):z@(Var name):xs)
+    | member name hm = case hm ! name of
+        (Rat _ value) -> x : appMinus (Numb value 0) : toRatToken hm xs
+        _ -> x : y : z : toRatToken hm xs
+toRatToken hm (x@(Var name):xs)
+    | member name hm = case hm ! name of
+        (Rat _ value) -> (Numb value 0) : toRatToken hm xs
+        _ -> x : toRatToken hm xs
+toRatToken hm (x:y@(Op Minus):z:xs) = x : y : z : toRatToken hm xs
+toRatToken hm ((Op Minus):x@(Numb _ _):xs) = appMinus x : toRatToken hm xs
+toRatToken hm (x@(Op Minus):y@(Var name):xs)
+    | member name hm = case hm ! name of
+        (Rat _ value) -> appMinus (Numb value 0) : toRatToken hm xs
+        _ -> x : y : toRatToken hm xs
+toRatToken hm (x@(Numb _ _):y@(Var name):xs)
+    | member name hm = case hm ! name of
+        (Rat _ value) -> x : (Op Mult) : (Numb value 0) : toRatToken hm xs
+        _ -> x : y : toRatToken hm xs
+toRatToken hm (x@(Op _):xs) = x : toRatToken hm xs
+toRatToken hm (x:xs) = x : toRatToken hm xs
+
+{-- IMAGINARY --}
 
 form :: [Token] -> [Token]
 form [] = []
@@ -96,7 +135,7 @@ toVar lst hm = toVar2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile (/= (Op 
         toVar2 ((Var name):[]) lst hm
             -- | (Var "i") `elem` lst = Ima name (toIma $ formIma lst)
             | (Var "[") `elem` lst = Mat name (toMat lst hm)
-            | otherwise = Rat name (simpleReduce lst)
+            | otherwise = Rat name (simpleReduce $ toRatToken hm lst)
         toVar2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst _ = Fct name var (form lst)
         toVar2 _ _ _ = Void
 
@@ -105,9 +144,12 @@ checkType lst hm = checkType2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile 
     where
         checkType2 :: [Token] -> [Token] -> HashMap String Var -> IO Var
         checkType2 ((Var name):[]) lst hm
+            | any (\x -> not $ isLetter x) name || name == "i" = do
+                putStrLn "Wrong var name"
+                return (Void)
             -- | (Var "i") `elem` lst = Ima name (toIma $ formIma lst)
-            | (Var "[") `elem` lst = formMat lst hm
-            | otherwise = formRat lst hm
+            | (Var "[") `elem` lst = checkMat lst hm
+            | otherwise = checkRat lst hm
         checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = return (Fct name var (form lst))
         checkType2 _ _ _ = do
             putStrLn "Error: No founded patern"

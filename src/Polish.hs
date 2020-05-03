@@ -1,10 +1,12 @@
 module Polish
 (toPolish
 , toNormal
-, reduce)where
+, reduce
+, isCompatible)where
 
 import Token
 import Data
+import Debug.Trace
 
 allLeft :: [Token] -> Bool -> [Token]
 allLeft [] _ = []
@@ -24,6 +26,8 @@ toPolish tkLst = toPolish2 (allLeft tkLst False) []
         toPolish2 (hx@(Numb _ _):xs) opLst = hx : toPolish2 xs opLst
         toPolish2 (hx@(Var _):xs) opLst = hx : toPolish2 xs opLst
         toPolish2 ((Op o):xs) [] = toPolish2 xs [Op o]
+        toPolish2 (hy@(Op OpenBracket):xs) allOp = toPolish2 xs (hy:allOp)
+        toPolish2 (hy@(Op CloseBracket):xs) allOp = takeWhile (/= (Op OpenBracket)) allOp ++ toPolish2 xs (tail $ dropWhile (/= (Op OpenBracket)) allOp)
         toPolish2 (hy@(Op o):xs) allOp@(y:ys)
             | getPrecedence hy <= getPrecedence y = y : toPolish2 (hy:xs) ys
             | otherwise = toPolish2 xs (hy:allOp)
@@ -31,7 +35,7 @@ toPolish tkLst = toPolish2 (allLeft tkLst False) []
 isCompatible :: (Token, Token, Token) -> Bool
 isCompatible ((Numb x x1), (Numb y y1), (Op z))
     | (z == Add || z == Minus) && x1 == y1 = True
-    | (z == Mult || z == Div) = True
+    | (z == Mult || z == Div || z == Mod) = True
     | z == Pow && y1 == 0 = True
 isCompatible _ = False
 
