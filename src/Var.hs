@@ -1,4 +1,4 @@
-module Var (toVar, checkType, getName) where
+module Var (toVar, checkType, getName, deployVar, endOfMat, toMat) where
 
 import Token
 import Parsing
@@ -12,8 +12,8 @@ import Polish
 
 {-- MATRICE --}
 
-checkMat :: [Token] -> HashMap String Var -> IO Var
-checkMat lst hm
+checkMat :: [Token] -> HashMap String Var -> String -> IO Var
+checkMat lst hm name
     | checkOp newLst =  do
         putStrLn $ "Error: Non expected operator"
         return Void
@@ -29,7 +29,7 @@ checkMat lst hm
     | (checkNumber $ toMat newLst hm) = do
         putStrLn "Error: Not same number of element in matrice"
         return Void
-    | otherwise = return (Mat "" [])
+    | otherwise = return (Mat name [])
     where
         newLst = toMatToken hm lst
         checkVar :: [Token] -> String
@@ -38,9 +38,7 @@ checkMat lst hm
             | name /= ";" && name /= "," && name /= "[" && name /= "]" = name
         checkVar (x:xs) = checkVar xs
         checkOp :: [Token] -> Bool
-        checkOp [] = False
-        checkOp ((Op _):_) = True
-        checkOp (x:xs) = checkOp xs
+        checkOp = any isOp
         checkComma :: [Token] -> Bool
         checkComma [] = False
         checkComma (x@(Numb _ _):y@(Var ","):z@(Numb _ _):xs) = checkComma (z : xs)
@@ -78,6 +76,14 @@ toMatToken hm (x@(Var name):xs)
         _ -> x : toMatToken hm xs
 toMatToken hm (x:xs) = x : toMatToken hm xs
 
+endOfMat :: [Token] -> Int -> Int
+endOfMat [] _ = 0
+endOfMat ((Var "["):xs) br = 1 + endOfMat xs (br + 1)
+endOfMat ((Var "]"):xs) br
+    | br == 1 = 1
+    | otherwise = 1 + endOfMat xs (br - 1)
+endOfMat (x:xs) br = 1 + endOfMat xs br
+
 toMat :: [Token] -> HashMap String Var -> [[Float]]
 toMat [] _ = []
 toMat x hm = read $ showTkList $ toMatToken hm $ map toComma x
@@ -88,20 +94,26 @@ toMat x hm = read $ showTkList $ toMatToken hm $ map toComma x
 
 {-- RATIONAL --}
 
-checkRat :: [Token] -> HashMap String Var -> IO Var
-checkRat lst hm
+checkRat :: [Token] -> HashMap String Var -> String -> IO Var
+checkRat lst hm name
     | any isVar newLst = do
         let (Just x) = find isVar newLst
         putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
         return Void
-    | otherwise = return (Rat "" 0) 
+    | any isMatricialMult lst = do
+        putStrLn $ "Error: Matrix multiplication not expected"
+        return Void
+    | otherwise = return (Rat name 0) 
     where
         newLst = toBasictoken hm lst ""
 
+toRat :: [Token] -> HashMap String Var -> Float
+toRat lst hm = simpleReduce $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst ""
+
 {-- IMAGINARY --}
 
-checkIma :: [Token] -> HashMap String Var -> IO Var
-checkIma lst hm
+checkIma :: [Token] -> HashMap String Var -> String -> IO Var
+checkIma lst hm name
     | any isVar newLst = do
         let (Just x) = find isVar newLst
         putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
@@ -109,7 +121,10 @@ checkIma lst hm
     | powerI newLst = do
         putStrLn "Error: powered i is invalid"
         return Void
-    | otherwise = return (Ima "" []) 
+    | any isMatricialMult lst = do
+        putStrLn $ "Error: Matrix multiplication not expected"
+        return Void
+    | otherwise = return (Ima name []) 
     where
         newLst = toBasictoken hm lst "i"
         powerI :: [Token] -> Bool
@@ -118,20 +133,29 @@ checkIma lst hm
             | b /= 0 = True
         powerI (x:xs) = powerI xs
 
+toIma :: [Token] -> HashMap String Var -> [Token]
+toIma lst hm = makeItRedableRev $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst "i"
+
 {-- FUNCTION --}
 
-checkFunction :: String -> [Token] -> HashMap String Var -> IO Var
-checkFunction name lst hm
-    | name == "i" = do
+checkFunction :: String -> [Token] -> HashMap String Var -> String -> IO Var
+checkFunction var lst hm name
+    | var == "i" = do
         putStrLn "Wrong var name"
         return Void
     | any isVar newLst = do
         let (Just x) = find isVar newLst
         putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
         return Void
-    | otherwise = return (Fct "" "" [])
+    | any isMatricialMult lst = do
+        putStrLn $ "Error: Matrix multiplication not expected"
+        return Void
+    | otherwise = return (Fct name var [])
     where
-        newLst = toBasictoken hm lst name
+        newLst = toBasictoken hm lst var
+
+toFct :: [Token] -> HashMap String Var -> String -> [Token]
+toFct lst hm var = makeItRedable $ intersperse (Op Add) $ addAll $ filter isNumb $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst var
 
 {-- MANAGER --}
 
@@ -165,35 +189,34 @@ form (x@(Numb _ _):y@(Var _):xs) = x : Op Mult : form (y : xs)
 form (x@(Var _):y@(Var _):xs) = x : Op Mult : form (y : xs)
 form (x:xs) = x : form xs
 
-toVar :: [Token] -> HashMap String Var -> Var
-toVar lst hm = toVar2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile (/= (Op Equal)) lst) hm
-    where
-        toVar2 :: [Token] -> [Token] -> HashMap String Var -> Var
-        toVar2 ((Var name):[]) lst hm
-            | (Var "i") `elem` lst =
-                let tmp = solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst "i"
-                in Ima name tmp
-            | (Var "[") `elem` lst = Mat name (toMat lst hm)
-            | otherwise =
-                let tmp = simpleReduce $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst ""
-                in Rat name tmp
-        toVar2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm =
-            let tmp = solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst var
-            in Fct name var tmp
-        toVar2 _ _ _ = Void
+toVar :: Var -> [Token] -> HashMap String Var -> Var
+toVar _ [] _ = Void
+toVar (Rat name _) lst hm = Rat name (toRat lst hm)
+toVar (Ima name _) lst hm = Ima name (toIma lst hm)
+toVar (Mat name _) lst hm = Mat name (toMat lst hm)
+toVar (Fct name var _) lst hm = Fct name var (toFct lst hm var)
+toVar _ _ _ = Void
 
 checkType :: [Token] -> HashMap String Var -> IO Var
-checkType lst hm = checkType2 (takeWhile (/= (Op Equal)) lst) (tail $ dropWhile (/= (Op Equal)) lst) hm
+checkType lst hm = do
+    let bef = takeWhile (/= (Op Equal)) lst
+    let aft = dropWhile (/= (Op Equal)) lst
+    case aft of
+        [] -> do
+            putStrLn "Error: Unknown Patern"
+            return Void
+        _ -> checkType2 bef (tail aft) hm
     where
         checkType2 :: [Token] -> [Token] -> HashMap String Var -> IO Var
         checkType2 ((Var name):[]) lst hm
             | any (\x -> not $ isLetter x) name || name == "i" = do
-                putStrLn "Wrong var name"
+                putStrLn "Error: Wrong var name"
                 return (Void)
-            | (Var "i") `elem` lst = checkIma lst hm
-            | (Var "[") `elem` lst = checkMat lst hm
-            | otherwise = checkRat lst hm
-        checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = checkFunction var lst hm
+            | (Var "i") `elem` lst = checkIma lst hm name
+            | (Var "[") `elem` lst = checkMat lst hm name
+            | otherwise = checkRat lst hm name
+        checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = checkFunction var lst hm name
+        -- checkType2 tk [(Var "?")] hm = checkCompute (varToNumb tk) hm
         checkType2 _ _ _ = do
             putStrLn "Error: No founded patern"
             return (Void)
@@ -204,3 +227,8 @@ getName (Ima name _) = name
 getName (Mat name _) = name
 getName (Fct name _ _ ) = name
 getName _ = "No name Found"
+
+deployVar :: Token -> HashMap String Var -> Var
+deployVar (Var name) hm
+    | member name hm = hm ! name
+deployVar x _ = Void

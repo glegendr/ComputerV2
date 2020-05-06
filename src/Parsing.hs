@@ -22,6 +22,7 @@ spaceIt [] = []
 spaceIt (x:[]) = [x]
 spaceIt (x:x1:xs)
     | isNumber x && not (isNumber x1) && x1 /= '.' = x : ' ' : spaceIt (x1:xs)
+    | x == '*' && x1 == '*' = x : x1 : ' ' : spaceIt xs
     | not (isNumber x) && x /= '.' && (isNumber x1 || [x1] `elem` map fst allOperatorString) = x : ' ' : spaceIt (x1:xs)
     | [x] `elem` map fst allOperatorString = x : ' ' : spaceIt (x1:xs)
     | (not $ isAlphaNum x) && x /= '.' = x : ' ' : spaceIt (x1:xs)
@@ -43,7 +44,7 @@ simpleReduce tkLst = isSimple $ filter (\x -> case x of
     where
         isSimple :: [Token] -> Float
         isSimple (Numb x 0:[]) = x
-        isSimple x = trace (show x) $ 0
+        isSimple x = 0
 
 isWellFormed :: [Token] -> ([Token], ParseError)
 isWellFormed [] = ([], None)

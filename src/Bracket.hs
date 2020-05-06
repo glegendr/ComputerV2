@@ -47,34 +47,21 @@ listXPow lst pow = [x | x@(Numb a b) <- listXPow2 lst pow (genListNM pow (length
 
 multinomialResolution :: [Token] -> Token -> [Token]
 multinomialResolution lst (Numb x 0) =
-    let ret = listXPow (filter isNumb (toPositiv lst)) (round x)
+    let ret = listXPow (filter isNumbNotNull (toPositiv lst)) (round x)
     in intersperse (Op Add) ret
 multinomialResolution lst _ = [UnParsed]
 
 binomialResolution :: [Token] -> Token -> [Token]
-binomialResolution lst (Numb n 0) = intersperse (Op Add) $ binomialSum 0 (round n) (filter isNumb (toPositiv lst))
+binomialResolution lst (Numb n 0) = intersperse (Op Add) $ binomialSum 0 (realToFrac $ round n) (filter isNumbNotNull (toPositiv lst))
     where
-        binomialSum :: Int -> Int -> [Token] -> [Token]
+        binomialSum :: Float -> Float -> [Token] -> [Token]
         binomialSum k n lst@(x:y:[])
             | k > n = []
             | otherwise =
-                let factorialRet = floatToToken $ (factorial (realToFrac n)) / (factorial (realToFrac (n - k)) * factorial (realToFrac k))
-                    powRet = multToken (powToken x (intToToken (n - k))) (powToken y (intToToken k))
+                let factorialRet = floatToToken $ (factorial  n) / ((factorial (n - k)) * factorial k)
+                    powRet = multToken (powToken x (floatToToken (n - k))) (powToken y (floatToToken k))
                 in multToken factorialRet powRet : binomialSum (k + 1) n lst
         binomialSum _ _ _ = []
-
-foundCloseBr :: [Token] -> Int
-foundCloseBr lst = foundCloseBr2 lst 0
-    where
-        foundCloseBr2 :: [Token] -> Int -> Int
-        foundCloseBr2 [] _ = 0
-        foundCloseBr2 (x:xs) br
-            | br < 0 = 0
-        foundCloseBr2 ((Op CloseBracket):xs) br
-            | br == 1 = 0
-            | otherwise = 1 + foundCloseBr2 xs (br - 1)
-        foundCloseBr2 ((Op OpenBracket):xs) br = 1 + foundCloseBr2 xs (br + 1)
-        foundCloseBr2 (x:xs) br = 1 + foundCloseBr2 xs br
 
 smallReduce :: [Token] -> [Token]
 smallReduce = smallReduce2 []
@@ -121,17 +108,27 @@ delBracket lst =
         then befBr
         else if (getPrecedence op >= getPrecedence op2)
         then
-            let (b, ret) = resolveOpBracket inBr op value
+            let (b, ret) = resolveOpBracket (transformInBracket inBr) op value
             in 
                 case (b, befBr) of
                     (True, (x:x1:xs)) -> delBracket ((init $ init befBr) ++ ret ++ aftBr)
                     _ -> delBracket (befBr ++ ret ++ aftBr)
         else
-            let (b, ret) = resolveOpBracket inBr op2 value2
+            let (b, ret) = resolveOpBracket (transformInBracket inBr) op2 value2
             in 
                 case (b, aftBr) of
                     (True, (x:x1:xs)) -> delBracket (befBr ++ ret ++ (drop 2 aftBr))
                     _ -> befBr ++ delBracket (ret ++ aftBr)
+
+transformInBracket :: [Token] -> [Token]
+transformInBracket [] = []
+transformInBracket lst
+    | length newLst < 2 = lst
+    | any (\x -> getPrecedence x /= getPrecedence (Op Add)) (init $ tail newLst) = lst
+    | otherwise = let tmp = intersperse (Op Add) $ filter isNumbNotNull $ addAll $ filter isNumbNotNull $ toPositiv (init $ tail lst)
+        in Op OpenBracket : tmp ++ [Op CloseBracket]
+    where newLst = filter isOp lst
+
 
 resolveOpBracket :: [Token] -> Token -> Token -> (Bool, [Token])
 resolveOpBracket lst (Op Add) _ = (False, tail $ init $ lst)
@@ -146,7 +143,7 @@ resolveOpBracket lst (Op Minus) _ =  (False, appMinusBracket (tail $ init $ lst)
 resolveOpBracket lst (Op Pow) value@(Numb v _)
     | v <= 0 = (True, [Numb 1 0])
     | v == 1 = (True, lst)
-    | length (filter isNumb  (tail $ init $ lst)) == 2 = (True, (Op OpenBracket) : binomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
+    | length (filter isNumbNotNull  (tail $ init $ lst)) == 2 = (True, (Op OpenBracket) : binomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
     | otherwise = (True, (Op OpenBracket) : multinomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
 resolveOpBracket lst (Op Mult) value@(Numb v x)
     | v == 0 = (True, [Numb 0 0])

@@ -7,11 +7,6 @@ module Token
 , toToken
 , floatToToken
 , intToToken
-, isOp
-, isVar
-, isNumb
-, isNotOp
-, showTkList0
 , allOperatorString
 , addToken
 , minusToken
@@ -20,7 +15,9 @@ module Token
 , powToken
 , modToken
 , makeItRedable
+, makeItRedableRev
 , toPositiv
+, addAll
 ) where
 
 import Data.List.Split
@@ -29,10 +26,7 @@ import Data
 import Data.List
 import Data.Fixed
 
-allOperatorString = [(show Add, Add), (show Minus, Minus), (show Mult, Mult), (show Div, Div), (show Pow, Pow), (show Mod, Mod), (show Equal, Equal), (show OpenBracket, OpenBracket), (show CloseBracket, CloseBracket)]
-
-showTkList0 :: [Token] -> String
-showTkList0 x = showTkList x ++ " = 0.0"
+allOperatorString = [(show Add, Add), (show Minus, Minus), (show Mult, Mult), (show Div, Div), (show Pow, Pow), (show Mod, Mod), (show MatricialMult, MatricialMult), (show Equal, Equal), (show OpenBracket, OpenBracket), (show CloseBracket, CloseBracket)]
 
 getPrecedence :: Token -> Int
 getPrecedence x
@@ -46,8 +40,9 @@ getPrecedence x
 
 powToken :: Token -> Token -> Token
 powToken hx@(Numb x x1) (Numb y y1)
-    | y1 /= 0 = hx
-    | x1 /= 0 = Numb x (x1 * round y)
+    | y == 0 = (Numb 1 0)
+    | y1 /= 0 || y == 1 = hx
+    | x1 /= 0 = Numb (x ^ round y) (x1 * round y)
     | otherwise = Numb (x ^ (round y)) 0
 
 addToken :: Token -> Token -> Token
@@ -85,18 +80,6 @@ getOp _ = error "OUI OUI FROMAGE 2"
 makeOp :: (Token, Token, Token) -> Token
 makeOp (hx@(Numb x x1), hy@(Numb y y1), ho@(Op op)) = (getOp ho) hx hy  
 makeOp _ = error "OUI OUI FROMAGE"
-
-isOp :: Token -> Bool
-isOp (Op _) = True
-isOp _ = False
-
-isVar :: Token -> Bool
-isVar (Var _) = True
-isVar _ = False
-
-isNumb :: Token -> Bool
-isNumb (Numb _ _) = True
-isNumb _ = False
 
 appMinus :: Token -> Token
 appMinus (Op Minus) = Op Add
@@ -152,8 +135,6 @@ toToken str
             | str `elem` map (\(x, y) -> x) allOperatorString = True
             | otherwise = False
 
-isNotOp = not . isOp
-
 delSameExpo :: Token -> [Token] -> [Token]
 delSameExpo _ [] = []
 delSameExpo x@(Numb _ a) (y@(Numb _ b):xs)
@@ -172,10 +153,13 @@ addAll (x:xs) = foldl addToken x xs : addAll (delSameExpo x xs)
 
 makeItRedable :: [Token] -> [Token]
 makeItRedable = changeOp . intersperse (Op Add) . reverse . sortOn (\(Numb _ x) -> x) . addAll . filter isNotOp . toPositiv
-    where
-        changeOp :: [Token] -> [Token]
-        changeOp [] = []
-        changeOp (a@(Op _):b@(Numb x _):xs)
-            | x < 0 = Op Minus : appMinus b : changeOp xs
-            | otherwise = a : b : changeOp xs
-        changeOp (x:xs) = x : changeOp xs
+
+makeItRedableRev :: [Token] -> [Token]
+makeItRedableRev = changeOp . intersperse (Op Add) . sortOn (\(Numb _ x) -> x) . addAll . filter isNotOp . toPositiv
+
+changeOp :: [Token] -> [Token]
+changeOp [] = []
+changeOp (a@(Op _):b@(Numb x _):xs)
+    | x < 0 = Op Minus : appMinus b : changeOp xs
+    | otherwise = a : b : changeOp xs
+changeOp (x:xs) = x : changeOp xs

@@ -2,7 +2,20 @@ module Data
 (Token(..)
 , Operator(..)
 , Var(..)
+, Compute(..)
+, isRat
+, isIma
+, isMat
+, isFct
+, isOp
+, isNotOp
+, isVar
+, isNumb
+, isNumbNotNull
+, isMatricialMult
+, isCUnknown
 , showTkList
+, showTkList0
 , showMat
 , showVar
 , showVarMap
@@ -29,7 +42,7 @@ instance Show (Token) where
     show (Var x) = x
     show UnParsed = "Error"
 
-data Operator = Add | Minus | Mult | Div | Pow | Mod | Equal | OpenBracket | CloseBracket deriving (Eq)
+data Operator = Add | Minus | Mult | Div | Pow | Mod | MatricialMult | Equal | OpenBracket | CloseBracket deriving (Eq)
 instance Show (Operator) where
     show Add = "+"
     show Minus = "-"
@@ -37,14 +50,23 @@ instance Show (Operator) where
     show Div = "/"
     show Pow = "^"
     show Mod = "%"
+    show MatricialMult = "**"
     show Equal = "="
     show OpenBracket = "("
     show CloseBracket = ")"
 
+data Compute = COp !Operator | CTk !Token | CVar !Var | CUnknown !String
+instance Show (Compute) where
+    show (COp x) = show x
+    show (CTk x) = show x
+    show (CVar x) = drop 2 $ showVar x
+    show (CUnknown x) = show x
+
 showTkList :: [Token] -> String
-showTkList [] = "0.0"
-showTkList (x:[]) = show x
-showTkList (x:xs) = show x ++ " " ++ showTkList xs
+showTkList = showTkListName "x"
+
+showTkList0 :: [Token] -> String
+showTkList0 x = showTkList x ++ "= 0.0"
 
 showTkListName :: String -> [Token] -> String
 showTkListName _ [] = []
@@ -92,6 +114,34 @@ isMat _ = False
 isFct :: Var -> Bool
 isFct (Fct _ _ _) = True
 isFct _ = False
+
+isOp :: Token -> Bool
+isOp (Op _) = True
+isOp _ = False
+
+isNotOp = not . isOp
+
+isVar :: Token -> Bool
+isVar (Var _) = True
+isVar _ = False
+
+isNumb :: Token -> Bool
+isNumb (Numb _ _) = True
+isNumb _ = False
+
+isNumbNotNull :: Token -> Bool
+isNumbNotNull (Numb x _)
+    | x == 0 = False
+    | otherwise = True
+isNumbNotNull _ = False
+
+isMatricialMult :: Token -> Bool
+isMatricialMult (Op MatricialMult) = True
+isMatricialMult _ = False
+
+isCUnknown :: Compute -> Bool
+isCUnknown (CUnknown _) = True
+isCUnknown x = False
 
 showVarMap :: HashMap String Var -> String
 showVarMap hm =
