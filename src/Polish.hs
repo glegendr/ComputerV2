@@ -5,30 +5,30 @@ module Polish
 , isCompatible
 , allLeft
 , solvePolish
-, foundCloseBr)where
+, findCloseBr)where
 
 import Token
 import Data
 import Debug.Trace
 
-foundCloseBr :: [Token] -> Int
-foundCloseBr lst = foundCloseBr2 lst 0
+findCloseBr :: [Token] -> Int
+findCloseBr lst = findCloseBr2 lst 0
     where
-        foundCloseBr2 :: [Token] -> Int -> Int
-        foundCloseBr2 [] _ = 0
-        foundCloseBr2 (x:xs) br
+        findCloseBr2 :: [Token] -> Int -> Int
+        findCloseBr2 [] _ = 0
+        findCloseBr2 (x:xs) br
             | br < 0 = 0
-        foundCloseBr2 ((Op CloseBracket):xs) br
+        findCloseBr2 ((Op CloseBracket):xs) br
             | br == 1 = 0
-            | otherwise = 1 + foundCloseBr2 xs (br - 1)
-        foundCloseBr2 ((Op OpenBracket):xs) br = 1 + foundCloseBr2 xs (br + 1)
-        foundCloseBr2 (x:xs) br = 1 + foundCloseBr2 xs br
+            | otherwise = 1 + findCloseBr2 xs (br - 1)
+        findCloseBr2 ((Op OpenBracket):xs) br = 1 + findCloseBr2 xs (br + 1)
+        findCloseBr2 (x:xs) br = 1 + findCloseBr2 xs br
 
 allLeft :: [Token] -> Bool -> [Token]
 allLeft [] _ = []
-allLeft ((Op Equal):x@(Op OpenBracket):xs) _ = Op Minus : x : take (foundCloseBr $ x:xs) (x:xs) ++ [Op CloseBracket] ++ allLeft (drop ((foundCloseBr $ x:xs) + 1) (x:xs)) True
+allLeft ((Op Equal):x@(Op OpenBracket):xs) _ = Op Minus : x : take (findCloseBr $ x:xs) (x:xs) ++ [Op CloseBracket] ++ allLeft (drop ((findCloseBr $ x:xs) + 1) (x:xs)) True
 allLeft ((Op Equal):x1:xs) _ = Op Add : appMinus x1 : allLeft xs True
-allLeft (a@(Op _ ):x@(Op OpenBracket):xs) True = appMinus a : x : take (foundCloseBr $ x:xs) (x:xs) ++ [Op CloseBracket] ++ allLeft (drop (foundCloseBr $ x:xs) (x:xs)) True
+allLeft (a@(Op _ ):x@(Op OpenBracket):xs) True = appMinus a : x : take (findCloseBr $ x:xs) (x:xs) ++ [Op CloseBracket] ++ allLeft (drop (findCloseBr $ x:xs) (x:xs)) True
 allLeft ((Op Add):x1:xs) True = Op Add : appMinus x1 : allLeft xs True
 allLeft ((Op Minus):x1:xs) True = Op Add : x1 : allLeft xs True
 allLeft ((Op x):x1:xs) True = Op x : x1 : allLeft xs True
@@ -50,6 +50,7 @@ toPolish tkLst = toPolish2 (allLeft tkLst False) []
         toPolish2 (hy@(Op o):xs) allOp@(y:ys)
             | getPrecedence hy <= getPrecedence y = y : toPolish2 (hy:xs) ys
             | otherwise = toPolish2 xs (hy:allOp)
+        toPolish2 _ _ = [UnParsed]
 
 isCompatible :: (Token, Token, Token) -> Bool
 isCompatible ((Numb x x1), (Numb y y1), (Op z))

@@ -2,6 +2,7 @@ module Token
 (getOp
 , appMinus
 , appMult
+, appDiv
 , getPrecedence
 , makeOp
 , toToken
@@ -26,7 +27,8 @@ import Data
 import Data.List
 import Data.Fixed
 
-allOperatorString = [(show Add, Add), (show Minus, Minus), (show Mult, Mult), (show Div, Div), (show Pow, Pow), (show Mod, Mod), (show MatricialMult, MatricialMult), (show Equal, Equal), (show OpenBracket, OpenBracket), (show CloseBracket, CloseBracket)]
+
+allOperatorString = foldl (\acc x -> (show x, x):acc) [] [Add, Minus, Mult, Div, Pow, Mod, MatricialMult, Equal, OpenBracket, CloseBracket]
 
 getPrecedence :: Token -> Int
 getPrecedence x
@@ -40,10 +42,11 @@ getPrecedence x
 
 powToken :: Token -> Token -> Token
 powToken hx@(Numb x x1) (Numb y y1)
+    | y1 /= 0 = UnParsed
+    | y == 1 = hx
+    | y < 0 = Numb (1 / (x ^ (- (round y)))) (x1 * round y)
     | y == 0 = (Numb 1 0)
-    | y1 /= 0 || y == 1 = hx
-    | x1 /= 0 = Numb (x ^ round y) (x1 * round y)
-    | otherwise = Numb (x ^ (round y)) 0
+    | otherwise = Numb (x ^ round y) (x1 * round y)
 
 addToken :: Token -> Token -> Token
 addToken (Numb x x1) (Numb y y1)
@@ -66,7 +69,9 @@ multToken :: Token -> Token -> Token
 multToken (Numb x x1) (Numb y y1) = Numb (x * y) (x1 + y1)
 
 modToken :: Token -> Token -> Token
-modToken (Numb x x1) (Numb y y1) = Numb (mod' x y) x1
+modToken (Numb x x1) (Numb y y1)
+    | x > 0 = Numb (mod' x y) x1
+    | otherwise = Numb (-(mod' (-x) y)) x1
 
 getOp :: Token -> (Token -> Token -> Token)
 getOp (Op Add) = addToken
@@ -90,6 +95,10 @@ appMinus x = x
 appMult :: Token -> Token -> Token
 appMult m x@(Numb _ _) = multToken m x
 appMult _ x = x
+
+appDiv :: Token -> Token -> Token
+appDiv m@(Numb _ _) x@(Numb _ _) = divToken m x
+appDiv x _ = x
 
 operatorFromString :: String -> Operator
 operatorFromString str = oFS2 str allOperatorString

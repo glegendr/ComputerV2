@@ -4,8 +4,10 @@ module CalcExpo
 
 import Token
 import Data
+import Debug.Trace
 
 getExpo :: [Token] -> Int
+getExpo [Numb _ x] = x
 getExpo tkLst = 
     if (getExpoF min tkLst < 0)
     then getExpoF min tkLst

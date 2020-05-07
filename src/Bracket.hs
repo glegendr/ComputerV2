@@ -79,74 +79,94 @@ smallReduce = smallReduce2 []
 delBracket :: [Token] -> [Token]
 delBracket [] = []
 delBracket lst =
-    let
-        befBr = takeWhile (/= Op OpenBracket) lst
-        rawAftBr = drop (foundCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst
-        rawInBr = (take (foundCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst) ++ [Op CloseBracket]
-        inBr = rawInBr
-        aftBr = case rawAftBr of
-            [] -> []
-            x -> tail x
-        op = case befBr of
-            [] -> (Op Add)
-            x -> last x
-        value =
-            if (length befBr >= 2)
-            then befBr !! (length befBr - 2)
-            else (Numb 0 0)
-        op2 = case aftBr of
-            [] -> (Op Add)
-            x -> head x
-        value2 =
-            if (length aftBr >= 2)
-            then aftBr !! 1
-            else (Numb 0 0)
-    in
         if ((length $ filter (== (Op OpenBracket)) inBr) > 1)
         then delBracket $ befBr ++ ((Op OpenBracket) : (delBracket (tail $ init $ inBr)) ++ [Op CloseBracket]) ++ aftBr
         else if (inBr == [Op CloseBracket])
         then befBr
         else if (getPrecedence op >= getPrecedence op2)
         then
-            let (b, ret) = resolveOpBracket (transformInBracket inBr) op value
-            in 
-                case (b, befBr) of
-                    (True, (x:x1:xs)) -> delBracket ((init $ init befBr) ++ ret ++ aftBr)
-                    _ -> delBracket (befBr ++ ret ++ aftBr)
+            let (d, ret) = resolveOpBracket (transformInBracket inBr) op value
+            in delBracket ((reverse $ drop d $ reverse befBr) ++ ret ++ aftBr)
         else
-            let (b, ret) = resolveOpBracket (transformInBracket inBr) op2 value2
-            in 
-                case (b, aftBr) of
-                    (True, (x:x1:xs)) -> delBracket (befBr ++ ret ++ (drop 2 aftBr))
-                    _ -> befBr ++ delBracket (ret ++ aftBr)
-
-transformInBracket :: [Token] -> [Token]
-transformInBracket [] = []
-transformInBracket lst
-    | length newLst < 2 = lst
-    | any (\x -> getPrecedence x /= getPrecedence (Op Add)) (init $ tail newLst) = lst
-    | otherwise = let tmp = intersperse (Op Add) $ filter isNumbNotNull $ addAll $ filter isNumbNotNull $ toPositiv (init $ tail lst)
-        in Op OpenBracket : tmp ++ [Op CloseBracket]
-    where newLst = filter isOp lst
-
-
-resolveOpBracket :: [Token] -> Token -> Token -> (Bool, [Token])
-resolveOpBracket lst (Op Add) _ = (False, tail $ init $ lst)
-resolveOpBracket lst (Op Minus) _ =  (False, appMinusBracket (tail $ init $ lst) 0)
+            let (d, ret) = resolveOpBracket (transformInBracket inBr) op2 value2
+            in delBracket (befBr ++ ret ++ (drop d aftBr))
     where
-        appMinusBracket :: [Token] -> Int -> [Token]
-        appMinusBracket [] _ = []
-        appMinusBracket (x@(Op OpenBracket):xs) br = x : appMinusBracket xs (br + 1)
-        appMinusBracket (x@(Op CloseBracket):xs) br = x : appMinusBracket xs (br - 1)
-        appMinusBracket (x@(Op _):xs) 0 = appMinus x : appMinusBracket xs 0
-        appMinusBracket (x:xs) br = x : appMinusBracket xs br
-resolveOpBracket lst (Op Pow) value@(Numb v _)
-    | v <= 0 = (True, [Numb 1 0])
-    | v == 1 = (True, lst)
-    | length (filter isNumbNotNull  (tail $ init $ lst)) == 2 = (True, (Op OpenBracket) : binomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
-    | otherwise = (True, (Op OpenBracket) : multinomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
-resolveOpBracket lst (Op Mult) value@(Numb v x)
-    | v == 0 = (True, [Numb 0 0])
-    | v == 1 && x == 0 = (True, lst)
-    | otherwise = (True, (Op OpenBracket) : map (appMult value) (tail $ init $ lst) ++ [Op CloseBracket])
-resolveOpBracket a b c = trace ("Error Here: " ++ show b ++ show c) $ (False, [UnParsed])
+            befBr = takeWhile (/= Op OpenBracket) lst
+            rawAftBr = drop (findCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst
+            rawInBr = (take (findCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst) ++ [Op CloseBracket]
+            inBr = rawInBr
+            aftBr = case rawAftBr of
+                [] -> []
+                x -> tail x
+            op = case befBr of
+                [] -> (Op Add)
+                x -> last x
+            value =
+                if (length befBr >= 2)
+                then befBr !! (length befBr - 2)
+                else (Numb 0 0)
+            op2 = case aftBr of
+                [] -> (Op Add)
+                x -> head x
+            value2 =
+                if (length aftBr >= 2)
+                then aftBr !! 1
+                else (Numb 0 0)
+            transformInBracket :: [Token] -> [Token]
+            transformInBracket [] = []
+            transformInBracket lst
+                | length newLst < 2 = lst
+                | any (\x -> getPrecedence x /= getPrecedence (Op Add)) (init $ tail newLst) = lst
+                | otherwise = let tmp = intersperse (Op Add) $ filter isNumbNotNull $ addAll $ filter isNumbNotNull $ toPositiv (init $ tail lst)
+                    in Op OpenBracket : tmp ++ [Op CloseBracket]
+                where newLst = filter isOp lst
+            resolveOpBracket :: [Token] -> Token -> Token -> (Int, [Token])
+            resolveOpBracket lst (Op Add) _ = (0, tail $ init $ lst)
+            resolveOpBracket lst (Op Minus) _ =  (0, appMinusBracket (tail $ init $ lst) 0)
+                where
+                    appMinusBracket :: [Token] -> Int -> [Token]
+                    appMinusBracket [] _ = []
+                    appMinusBracket (x@(Op OpenBracket):xs) br = x : appMinusBracket xs (br + 1)
+                    appMinusBracket (x@(Op CloseBracket):xs) br = x : appMinusBracket xs (br - 1)
+                    appMinusBracket (x@(Op _):xs) 0 = appMinus x : appMinusBracket xs 0
+                    appMinusBracket (x:xs) br = x : appMinusBracket xs br
+            resolveOpBracket lst (Op Pow) value@(Numb v _)
+                | v <= 0 = (2, [Numb 1 0])
+                | v == 1 = (2, lst)
+                | length (filter isNumbNotNull  (tail $ init $ lst)) == 2 = (2, (Op OpenBracket) : binomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
+                | otherwise = (2, (Op OpenBracket) : multinomialResolution (tail $ init $ lst) value ++ [Op CloseBracket])
+            resolveOpBracket lst (Op Mult) value@(Numb v x)
+                | v == 0 = (2, [Numb 0 0])
+                | v == 1 && x == 0 = (2, lst)
+                | otherwise = (2, (Op OpenBracket) : map (appMult value) (tail $ init $ lst) ++ [Op CloseBracket])
+            resolveOpBracket lst (Op Mult) (Op OpenBracket) =
+                let multBy = take (findCloseBr $ tail aftBr) (tail $ aftBr) ++ [Op CloseBracket]
+                    size = length multBy
+                in trace ("TRACE MUL: " ++ show lst ++ "  " ++ show multBy) $ (size + 1, multBr lst (delBracket multBy))
+            resolveOpBracket lst (Op Div) value@(Numb v _)
+                | v == 1 = (2, lst)
+                | otherwise = (2, (Op OpenBracket) : map (\x -> appDiv x value) (tail $ init $ lst) ++ [Op CloseBracket])
+            resolveOpBracket lst (Op Div) (Op OpenBracket) =
+                let divBy = take (findCloseBr $ tail aftBr) (tail $ aftBr) ++ [Op CloseBracket]
+                    size = length divBy
+                in
+                    if (lst == divBy)
+                    then (size, [Numb 1 0])
+                    else (0, [UnParsed])
+            resolveOpBracket _ _ _ = (0, [UnParsed])
+
+-- salfeTail (x:xs) = xs
+-- salfeTail [] = []
+multBr :: [Token] -> [Token] -> [Token]
+multBr lst lst2 = Op OpenBracket : (intersperse (Op Add) $ multBr2 (filter isNumb lst) (filter isNumb lst2)) ++ [Op CloseBracket]
+    where
+        multBr2 :: [Token] -> [Token] -> [Token]
+        multBr2 [] _ = []
+        multBr2 (x:xs) lst =  map (appMult x) lst ++  multBr2 xs lst
+
+divBr :: [Token] -> [Token] -> [Token]
+divBr lst lst2 = Op OpenBracket : (intersperse (Op Add) $ divBr2 (filter isNumb lst) (filter isNumb lst2)) ++ [Op CloseBracket]
+    where
+        divBr2 :: [Token] -> [Token] -> [Token]
+        divBr2 [] _ = []
+        divBr2 (x:xs) lst =  map (appDiv x) lst ++ divBr2 xs lst      

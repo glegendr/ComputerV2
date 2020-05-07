@@ -66,7 +66,7 @@ showTkList :: [Token] -> String
 showTkList = showTkListName "x"
 
 showTkList0 :: [Token] -> String
-showTkList0 x = showTkList x ++ "= 0.0"
+showTkList0 x = showTkList x ++ "= 0"
 
 showTkListName :: String -> [Token] -> String
 showTkListName _ [] = []
@@ -143,12 +143,17 @@ isCUnknown :: Compute -> Bool
 isCUnknown (CUnknown _) = True
 isCUnknown x = False
 
-showVarMap :: HashMap String Var -> String
-showVarMap hm =
-    let
-        rat = "  Rationals:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isRat x])
-        ima = "  Imaginary:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isIma x])
-        mat = "  Matrix:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isMat x])
-        fct = "  Functions:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isFct x])
-    in rat ++ ima ++ mat ++ fct
+showVarMap :: HashMap String Var -> [String] -> String
+showVarMap hm [] = showVarMap' hm ["all"]
+showVarMap hm lst = showVarMap' hm lst
+
+showVarMap' :: HashMap String Var -> [String] -> String
+showVarMap' hm [] = []
+showVarMap' hm (x:xs)
+    | x == "r" || x == "rat" || x == "rationals" = "  Rationals:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isRat x]) ++ showVarMap' hm xs
+    | x == "i" || x == "ima" || x == "imaginary" = "  Imaginary:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isIma x]) ++ showVarMap' hm xs
+    | x == "m" || x == "mat" || x == "matrix"    = "  Matrix:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isMat x]) ++ showVarMap' hm xs
+    | x == "f" || x == "fct" || x == "functions" = "  Functions:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isFct x]) ++ showVarMap' hm xs
+    | x == "a" || x == "all" =  showVarMap' hm ("r":"i":"m":"f":[])
+    | otherwise = showVarMap' hm xs
     where all = Hm.foldl' (\acc x -> x : acc) [] hm
