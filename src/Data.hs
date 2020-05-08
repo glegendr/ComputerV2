@@ -21,12 +21,18 @@ module Data
 , showVarMap
 , putVar
 , showTkListName
+, constName
+, constList
+, addConst
+, getName
+, getVarName
+, replaceVarName
 , putVarLn) where
 
-import Data.HashMap.Strict as Hm (HashMap, foldl')
+import Data.HashMap.Strict as Hm (HashMap, foldl', insert)
 import Data.List
 
-data Var = Rat !String !Float | Ima !String ![Token] | Mat !String ![[Float]] | Fct !String !String ![Token] | Void
+data Var = Rat !String !Float | Ima !String ![Token] | Mat !String ![[Float]] | Fct !String !String ![Token] | Void deriving (Eq)
 instance Show (Var) where
     show (Rat name value) = name ++ " = " ++ show value
     show (Ima name value) = name ++ " = " ++ showTkListName "i" value
@@ -61,6 +67,28 @@ instance Show (Compute) where
     show (CTk x) = show x
     show (CVar x) = drop 2 $ showVar x
     show (CUnknown x) = show x
+
+constList = [(Rat "pi" pi), (Rat "phi" 1.618033988749895)]
+constName = map getName constList
+addConst hm = foldl (\acc x -> Hm.insert (getName x) x acc) hm constList
+
+getName :: Var -> String
+getName (Rat name _) = name
+getName (Ima name _) = name
+getName (Mat name _) = name
+getName (Fct name _ _ ) = name
+getName _ = ""
+
+getVarName :: Var -> String
+getVarName (Fct _ name  _ ) = name
+getVarName _ = ""
+
+replaceVarName :: Var -> String -> String -> Var
+replaceVarName (Rat _ a) name _ = (Rat name a)
+replaceVarName (Ima _ a) name _ = (Ima name a)
+replaceVarName (Mat _ a) name _ = (Mat name a)
+replaceVarName (Fct _ _ b ) name var = (Fct name var b)
+replaceVarName x _ _ = x
 
 showTkList :: [Token] -> String
 showTkList = showTkListName "x"
@@ -144,16 +172,17 @@ isCUnknown (CUnknown _) = True
 isCUnknown x = False
 
 showVarMap :: HashMap String Var -> [String] -> String
-showVarMap hm [] = showVarMap' hm ["all"]
+showVarMap hm [] = showVarMap' hm ("r":"i":"m":"f":[])
 showVarMap hm lst = showVarMap' hm lst
 
 showVarMap' :: HashMap String Var -> [String] -> String
 showVarMap' hm [] = []
 showVarMap' hm (x:xs)
-    | x == "r" || x == "rat" || x == "rationals" = "  Rationals:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isRat x]) ++ showVarMap' hm xs
+    | x == "c" || x == "cst" || x == "constants" = "  Constants:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isRat x && (getName x) `elem` constName]) ++ showVarMap' hm xs
+    | x == "r" || x == "rat" || x == "rationals" = "  Rationals:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isRat x && not ((getName x) `elem` constName)]) ++ showVarMap' hm xs
     | x == "i" || x == "ima" || x == "imaginary" = "  Imaginary:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isIma x]) ++ showVarMap' hm xs
     | x == "m" || x == "mat" || x == "matrix"    = "  Matrix:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isMat x]) ++ showVarMap' hm xs
     | x == "f" || x == "fct" || x == "functions" = "  Functions:\n" ++ (foldl (++) "" $ sort $ [ "  - " ++ show x ++ "\n" | x <- all, isFct x]) ++ showVarMap' hm xs
-    | x == "a" || x == "all" =  showVarMap' hm ("r":"i":"m":"f":[])
+    | x == "a" || x == "all" =  showVarMap' hm ("c":"r":"i":"m":"f":[])
     | otherwise = showVarMap' hm xs
     where all = Hm.foldl' (\acc x -> x : acc) [] hm

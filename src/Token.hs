@@ -61,9 +61,7 @@ minusToken (Numb x x1) (Numb y y1)
     | otherwise = Numb (x - y) x1
 
 divToken :: Token -> Token -> Token
-divToken (Numb x x1) (Numb y y1)
-    | y == 0 = error "division by 0"
-    | otherwise = Numb (x / y) (x1 - y1)
+divToken (Numb x x1) (Numb y y1) = Numb (x / y) (x1 - y1)
 
 multToken :: Token -> Token -> Token
 multToken (Numb x x1) (Numb y y1) = Numb (x * y) (x1 + y1)
@@ -80,11 +78,11 @@ getOp (Op Mult) = multToken
 getOp (Op Div) = divToken
 getOp (Op Pow) = powToken
 getOp (Op Mod) = modToken
-getOp _ = error "OUI OUI FROMAGE 2"
+getOp _ = addToken
 
 makeOp :: (Token, Token, Token) -> Token
 makeOp (hx@(Numb x x1), hy@(Numb y y1), ho@(Op op)) = (getOp ho) hx hy  
-makeOp _ = error "OUI OUI FROMAGE"
+makeOp (x, _, _) = x
 
 appMinus :: Token -> Token
 appMinus (Op Minus) = Op Add

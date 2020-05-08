@@ -1,11 +1,11 @@
-module Var (toVar, checkType, getName, deployVar, endOfMat, toMat, replaceFctVar) where
+module Var (toVar, checkType, deployVar, endOfMat, toMat, replaceFctVar, checkBracket, checkMultNumber) where
 
 import Token
 import Parsing
 import Data
 import Data.Char
+import Data.List.Split (splitOn)
 import Data.List
-import Debug.Trace
 import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Bracket
 import Polish
@@ -27,11 +27,15 @@ checkMat lst hm name
     | checkBracket newLst 0 = do
         putStrLn "Error: Missmatched Bracket"
         return Void
-    | (checkNumber $ toMat newLst hm) = do
+    | (checkNumber splitted) = do
         putStrLn "Error: Not same number of element in matrice"
+        return Void
+    | checkLineCol splitted = do
+        putStrLn "Error: Incompatible matrix"
         return Void
     | otherwise = return (Mat name [])
     where
+        splitted = map (\x -> read x :: [[Float]]) $  splitOn ("**") $ showTkList $ toMatToken hm $ map toComma newLst
         newLst = toMatToken hm lst
         checkVar :: [Token] -> String
         checkVar [] = []
@@ -39,7 +43,7 @@ checkMat lst hm name
             | name /= ";" && name /= "," && name /= "[" && name /= "]" = name
         checkVar (x:xs) = checkVar xs
         checkOp :: [Token] -> Bool
-        checkOp = any isOp
+        checkOp = any (\x -> isOp x && not (isMatricialMult x))
         checkComma :: [Token] -> Bool
         checkComma [] = False
         checkComma (x@(Numb _ _):y@(Var ","):z@(Numb _ _):xs) = checkComma (z : xs)
@@ -58,11 +62,19 @@ checkMat lst hm name
         checkBracket ((Var "["):xs) n = checkBracket xs (n + 1)
         checkBracket ((Var "]"):xs) n = checkBracket xs (n - 1)
         checkBracket (_:xs) n = checkBracket xs n 
-        checkNumber :: [[Float]] -> Bool
-        checkNumber [] = True
-        checkNumber lst = 
-            let size = length $ head lst
-            in not (all (\y -> length y == size) lst)
+        checkNumber :: [[[Float]]] -> Bool
+        checkNumber [] = False
+        checkNumber (lst:xs)
+            | not (all (\y -> length y == size) lst) = True
+            | otherwise = checkNumber xs
+            where
+                size = length $ head lst
+        checkLineCol :: [[[Float]]] -> Bool
+        checkLineCol [] = False
+        checkLineCol (x:[]) = False
+        checkLineCol (x:x1:xs)
+            | length (head x) == length x1 = checkLineCol (x1:xs)
+            | otherwise = True
 
 toMatToken :: HashMap String Var -> [Token] -> [Token]
 toMatToken _ [] = []
@@ -87,18 +99,28 @@ endOfMat (x:xs) br = 1 + endOfMat xs br
 
 toMat :: [Token] -> HashMap String Var -> [[Float]]
 toMat [] _ = []
-toMat x hm = read $ showTkList $ toMatToken hm $ map toComma x
+toMat x hm = folded
     where
-        toComma :: Token -> Token
-        toComma (Var ";") = Var ","
-        toComma x = x
+        splitted = map (\x -> read x :: [[Float]]) $  splitOn ("**") $ showTkList $ toMatToken hm $ map toComma x
+        folded = foldl1 (\acc x -> matricialMult acc (transpose x)) splitted
 
+toComma :: Token -> Token
+toComma (Var ";") = Var ","
+toComma x = x
+
+matricialMult :: [[Float]] -> [[Float]] -> [[Float]]
+matricialMult [] _ = []
+matricialMult (x:xs) cols = matricialMult' x cols : matricialMult xs cols
+
+matricialMult' :: [Float] -> [[Float]] -> [Float]
+matricialMult' _ [] = []
+matricialMult' line (x:xs) = (sum $ zipWith (\x y -> x * y) line x) : matricialMult' line xs
 {-- RATIONAL --}
 
 checkRat :: [Token] -> HashMap String Var -> String -> IO Var
 checkRat lst hm name
     | any (== UnParsed) newLst = do
-        putStrLn "Error: Parse Error"
+        putStrLn "Error: Parse error"
         return Void
     | any isVar newLst = do
         let (Just x) = find isVar newLst
@@ -140,7 +162,7 @@ checkIma lst hm name
     --     putStrLn "Error: powered i is invalid"
     --     return Void
     | any (== UnParsed) newLst = do
-        putStrLn "Error: Parse Error"
+        putStrLn "Error: Parse error"
         return Void
     | any isMatricialMult lst = do
         putStrLn $ "Error: Matrix multiplication not expected"
@@ -174,11 +196,11 @@ calcI x = x
 
 checkFunction :: String -> [Token] -> HashMap String Var -> String -> IO Var
 checkFunction var lst hm name
-    | var == "i" = do
-        putStrLn "Error: Wrong var name"
+    | var == "i" || var `elem` constName = do
+        putStrLn $ "Error: \"" ++ var ++ "\" is a constant"
         return Void
     | any (== UnParsed) newLst = do
-        putStrLn "Error: Parse Error"
+        putStrLn "Error: Parse error"
         return Void
     | any isVar newLst = do
         let (Just x) = find isVar newLst
@@ -221,7 +243,7 @@ varToToken _ _ x  = [x]
 
 toBasictoken :: HashMap String Var -> [Token] -> String -> [Token]
 toBasictoken hm tk except = 
-    let maped = trace (show tk) $ foldl (\acc x -> acc ++ varToToken hm except x) [] (transformFct tk)
+    let maped = foldl (\acc x -> acc ++ varToToken hm except x) [] (transformFct tk)
         ret = case maped of
             ((Op Minus):x1:xs) -> appMinus x1 : xs
             _ -> maped
@@ -237,12 +259,12 @@ toBasictoken hm tk except =
             | member name hm = case hm ! name of
                 x@(Fct _ _ _) -> fctToToken x (-value) : transformFct xs
                 _ -> [UnParsed]
-        transformFct ((Var name):(Op OpenBracket):(Var name2):(Op CloseBracket):xs) 
+        transformFct ((Var name):(Op OpenBracket):(Var name2):(Op CloseBracket):xs)
+            | member name hm && name2 == except = case hm ! name of
+                x@(Fct _ _ tk) -> Op OpenBracket : tk ++ [Op CloseBracket] ++ transformFct xs
             | member name hm && member name2 hm = case (hm ! name, hm ! name2) of
                 (x@(Fct _ _ _), y@(Rat _ value)) -> fctToToken x value : transformFct xs
                 _ -> [UnParsed]
-            | member name hm && name2 == except = case hm ! name of
-                x@(Fct _ _ tk) -> Op OpenBracket : tk ++ [Op CloseBracket] ++ transformFct xs
             | otherwise = [UnParsed]
         transformFct ((Var name):(Op OpenBracket):(Op Minus):(Var name2):(Op CloseBracket):xs) 
             | member name hm && member name2 hm = case (hm ! name, hm ! name2) of
@@ -250,10 +272,12 @@ toBasictoken hm tk except =
                 _ -> [UnParsed]
             | otherwise = [UnParsed]
         transformFct ((Var name):xs)
+            | name == except = Numb 1 1 : transformFct xs
             | member name hm = case hm ! name of
-                x@(Fct _ _ _) -> [UnParsed]
-                x@(Ima _ tk) -> tk ++ transformFct xs
-        transformFct (x:xs) = trace (show x) $ x : transformFct xs
+                x@(Ima _ tk) -> Op OpenBracket : tk ++ [Op CloseBracket] ++ transformFct xs
+                (Rat _ x) -> (Numb x 0) : transformFct xs
+                _ -> [UnParsed]
+        transformFct (x:xs) = x : transformFct xs
         toBasictoken2 :: [Token] -> [Token]
         toBasictoken2 [] = []
         toBasictoken2 (x@(Op _):(Op Minus):y@(Numb _ _):xs) = x : appMinus y : toBasictoken2 xs
@@ -282,24 +306,50 @@ checkType lst hm = do
     where
         checkType2 :: [Token] -> [Token] -> HashMap String Var -> IO Var
         checkType2 ((Var name):[]) lst hm
-            | any (\x -> not $ isLetter x) name || name == "i" = do
+            | checkBracket lst 0 = do
+                putStrLn "Error: Missmatched bracket"
+                return (Void)
+            | checkMultNumber lst = do
+                putStrLn "Error: Operator is missing"
+                return (Void)
+            | name == "i" || name `elem` constName = do
+                putStrLn $ "Error: \"" ++ name ++ "\" is a constant"
+                return (Void)
+            | any (\x -> not $ isLetter x) name = do
                 putStrLn "Error: Wrong var name"
                 return (Void)
-            | (Var "i") `elem` lst = checkIma lst hm name
-            | (Var "[") `elem` lst = checkMat lst hm name
+            | (Var "i") `elem` lst || any (Var.isIma hm) lst = checkIma lst hm name
+            | (Var "[") `elem` lst || any (Var.isMat hm) lst = checkMat lst hm name
             | otherwise = checkRat lst hm name
         checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = checkFunction var lst hm name
-        -- checkType2 tk [(Var "?")] hm = checkCompute (varToNumb tk) hm
         checkType2 _ _ _ = do
             putStrLn "Error: No founded patern"
             return (Void)
 
-getName :: Var -> String
-getName (Rat name _) = name
-getName (Ima name _) = name
-getName (Mat name _) = name
-getName (Fct name _ _ ) = name
-getName _ = "No name Found"
+checkBracket :: [Token] -> Int -> Bool
+checkBracket [] 0 = False
+checkBracket [] n = True
+checkBracket ((Op OpenBracket):xs) n = checkBracket xs (n + 1)
+checkBracket ((Op CloseBracket):xs) n = checkBracket xs (n - 1)
+checkBracket (_:xs) n = checkBracket xs n 
+
+checkMultNumber :: [Token] -> Bool
+checkMultNumber [] = False
+checkMultNumber (x:[]) = False
+checkMultNumber ((Numb _ _):(Numb _ _):xs) = True
+checkMultNumber (x:xs) = checkMultNumber xs
+
+isIma hm (Var x)
+    | member x hm = case hm ! x of
+        Ima _ _ -> True
+        _ -> False
+isIma _ _ = False
+
+isMat hm (Var x)
+    | member x hm = case hm ! x of
+        Mat _ _ -> True
+        _ -> False
+isMat _ _ = False
 
 deployVar :: Token -> HashMap String Var -> Var
 deployVar (Var name) hm

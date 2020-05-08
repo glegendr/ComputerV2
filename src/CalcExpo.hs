@@ -4,7 +4,6 @@ module CalcExpo
 
 import Token
 import Data
-import Debug.Trace
 
 getExpo :: [Token] -> Int
 getExpo [Numb _ x] = x

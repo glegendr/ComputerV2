@@ -8,7 +8,6 @@ import Bracket
 import Var
 import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Parsing
-import Debug.Trace
 import CalcExpo
 
 printEnd :: [Token] -> String
@@ -43,10 +42,12 @@ getCUnknownName (x:xs) = getCUnknownName xs
 checkCompute :: [Token] -> HashMap String Var -> IO [Compute]
 checkCompute [] _ = return []
 checkCompute lst hm
+    | checkBracket lst 0 = return [CUnknown "Error: Missmatched bracket"]
+    | checkMultNumber lst = return [CUnknown "Error: Missed operator"]
     | (length $ filter (== Op Equal) lst) > 0 = return [CUnknown "Error: Multiple Eq"]
     | checkFct hm lst /= "" = return [CUnknown ("Error: Unknown Function " ++ checkFct hm lst)]
-    | any isCUnknown newLst = do return [CUnknown ("Error: Unexpected Value \"" ++ getCUnknownName newLst ++ "\"")]
-    | isIncompatible newLst = do return [CUnknown "Error: I can't compute this"]
+    | any isCUnknown newLst = return [CUnknown ("Error: Unexpected Value \"" ++ getCUnknownName newLst ++ "\"")]
+    | isIncompatible newLst = return [CUnknown "Error: I can't compute this"]
     | otherwise = return newLst
     where
         newLst = toComputeToken hm lst

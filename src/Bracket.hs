@@ -8,7 +8,6 @@ module Bracket
 import Token
 import Data
 import Data.List
-import Debug.Trace
 import Polish
 
 addList :: Int -> [Int] -> [[Int]]
@@ -142,7 +141,7 @@ delBracket lst =
             resolveOpBracket lst (Op Mult) (Op OpenBracket) =
                 let multBy = take (findCloseBr $ tail aftBr) (tail $ aftBr) ++ [Op CloseBracket]
                     size = length multBy
-                in trace ("TRACE MUL: " ++ show lst ++ "  " ++ show multBy) $ (size + 1, multBr lst (delBracket multBy))
+                in (size + 1, multBr lst (delBracket multBy))
             resolveOpBracket lst (Op Div) value@(Numb v _)
                 | v == 1 = (2, lst)
                 | otherwise = (2, (Op OpenBracket) : map (\x -> appDiv x value) (tail $ init $ lst) ++ [Op CloseBracket])

@@ -9,7 +9,6 @@ module Polish
 
 import Token
 import Data
-import Debug.Trace
 
 findCloseBr :: [Token] -> Int
 findCloseBr lst = findCloseBr2 lst 0
