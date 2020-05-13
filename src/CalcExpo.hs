@@ -35,7 +35,7 @@ expo2 ((Numb a 2):_:(Numb b 1):_:(Numb c 0):[]) =
         if (delta == 0)
         then ("  The solution is:\n    " ++ show ((-b) / (2 * a)))
         else if (delta > 0)
-        then ("  The two solutions are:\n    " ++ show (((-b) - sqrt delta) / (2 * a)) ++ "\n     " ++ show (((-b) + sqrt delta) / (2 * a)))
+        then ("  The two solutions are:\n    " ++ show (((-b) - sqrt delta) / (2 * a)) ++ "\n    " ++ show (((-b) + sqrt delta) / (2 * a)))
         else ("  The two complex solution are:\n    (" ++ show (-b) ++ " - i√" ++ show (-delta) ++ ") / (2 * " ++ show a ++ ")\n    (" ++ show (-b) ++ " + i√" ++ show (-delta) ++ ") / (2 * " ++ show a ++ ")")
 expo2 ((Numb a 2):[]) = expo2 $ (Numb a 2) : (Op Add) : (Numb 0 1) : (Op Add) : (Numb 0 0) : []
 expo2 ((Numb a 2):o:(Numb b 1):[]) = expo2 $ (Numb a 2) : o : (Numb b 1) : o : (Numb 0 0) : []

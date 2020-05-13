@@ -63,7 +63,8 @@ checkCompute lst hm
 
 computeMe :: [Compute] -> [Compute] -> String
 computeMe (x:[]) [] = show x
--- computeMe (x:[]) (y:[]) = show $ x == y
+computeMe (x:[]) (y:[])
+    | isImaCompute x || isImaCompute y || isMatCompute x || isMatCompute y = show $ x == y
 computeMe bef aft =
         let solved = solvePolish $ delBracket $ smallReduce $ allLeft (computeToToken bef ++ [Op Equal] ++ computeToToken aft) False
         in  trace (show solved) $ if (any (== UnParsed) solved)
@@ -88,3 +89,11 @@ toMatNoEnd lst hm =
     let cut = endOfMat lst 0
         mat = toMat (take cut lst) hm
     in CVar (Mat "tmpMat" mat)
+
+isImaCompute :: Compute -> Bool
+isImaCompute (CVar (Ima _ _)) = True
+isImaCompute x = False
+
+isMatCompute :: Compute -> Bool
+isMatCompute (CVar (Mat _ _)) = True
+isMatCompute x = False
