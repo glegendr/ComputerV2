@@ -63,7 +63,7 @@ binomialResolution lst (Numb n 0) = intersperse (Op Add) $ binomialSum 0 (realTo
         binomialSum _ _ _ = []
 
 smallReduce :: [Token] -> [Token]
-smallReduce = smallReduce2 []
+smallReduce x = smallReduce2 [] x
     where
         smallReduce2 ret [] = ret
         smallReduce2 ret (a@(Op OpenBracket):b:c@(Op CloseBracket):xs) = smallReduce (ret ++ [b] ++ xs)
@@ -77,17 +77,17 @@ smallReduce = smallReduce2 []
 delBracket :: [Token] -> [Token]
 delBracket [] = []
 delBracket lst =
-        if ((length $ filter (== (Op OpenBracket)) inBr) > 1)
-        then delBracket $ befBr ++ ((Op OpenBracket) : (delBracket (tail $ init $ inBr)) ++ [Op CloseBracket]) ++ aftBr
-        else if (inBr == [Op CloseBracket])
-        then befBr
-        else if (getPrecedence op >= getPrecedence op2)
-        then
-            let (d, ret) = resolveOpBracket (transformInBracket inBr) op value
-            in delBracket ((reverse $ drop d $ reverse befBr) ++ ret ++ aftBr)
-        else
-            let (d, ret) = resolveOpBracket (transformInBracket inBr) op2 value2
-            in delBracket (befBr ++ ret ++ (drop d aftBr))
+    if ((length $ filter (== (Op OpenBracket)) inBr) > 1)
+    then delBracket $ befBr ++ ((Op OpenBracket) : (delBracket (tail $ init $ inBr)) ++ [Op CloseBracket]) ++ aftBr
+    else if (inBr == [Op CloseBracket])
+    then befBr
+    else if (getPrecedence op >= getPrecedence op2)
+    then
+        let (d, ret) = resolveOpBracket (transformInBracket inBr) op value
+        in delBracket ((reverse $ drop d $ reverse befBr) ++ ret ++ aftBr)
+    else
+        let (d, ret) = resolveOpBracket (transformInBracket inBr) op2 value2
+        in delBracket (befBr ++ ret ++ (drop d aftBr))
     where
             befBr = takeWhile (/= Op OpenBracket) lst
             rawAftBr = drop (findCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst
@@ -120,7 +120,7 @@ delBracket lst =
                 where newLst = filter isOp lst
             resolveOpBracket :: [Token] -> Token -> Token -> (Int, [Token])
             resolveOpBracket lst (Op Add) _ = (0, tail $ init $ lst)
-            resolveOpBracket lst (Op Minus) _ =  (0, appMinusBracket (tail $ init $ lst) 0)
+            resolveOpBracket lst (Op Minus) _ = (0, appMinusBracket (tail $ init $ lst) 0)
                 where
                     appMinusBracket :: [Token] -> Int -> [Token]
                     appMinusBracket [] _ = []

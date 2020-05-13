@@ -10,6 +10,7 @@ import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Bracket
 import Polish
 import CalcExpo
+import Debug.Trace
 
 {-- MATRICE --}
 
@@ -176,6 +177,9 @@ checkIma lst hm name
     | isOperatorError lst = do
         putStrLn $ "Error: Operator error"
         return Void
+    | xPowx newLst 0 = do
+        putStrLn $ "Error: Unknown in power"
+        return Void
     | otherwise = return (Ima name []) 
     where
         newLst = toBasictoken hm lst "i"
@@ -218,6 +222,9 @@ checkFunction var lst hm name
     | isOperatorError lst = do
         putStrLn $ "Error: Operator error"
         return Void
+    | xPowx newLst 0 = do
+        putStrLn $ "Error: Unknown in power"
+        return Void
     | otherwise = return (Fct name var [])
     where
         newLst = toBasictoken hm lst var
@@ -226,6 +233,21 @@ toFct :: [Token] -> HashMap String Var -> String -> [Token]
 toFct lst hm var = makeItRedable $ intersperse (Op Add) $ addAll $ filter isNumb $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst var
 
 {-- MANAGER --}
+
+xPowx :: [Token] -> Int -> Bool
+xPowx [] _ = False
+xPowx ((Numb _ x):_) n
+    | x /= 0 && n /= 0 = True
+xPowx ((Op OpenBracket):xs) n
+    | n == 0 = xPowx xs n
+    | otherwise = xPowx xs (n + 1)
+xPowx ((Op Pow):(Op OpenBracket):xs) n = xPowx xs (n + 1)
+xPowx ((Op Pow):(Numb _ x):xs) _
+    | x /= 0 = True
+xPowx ((Op CloseBracket):xs) n
+    | n == 0 = xPowx xs n
+    | otherwise = xPowx xs (n - 1)
+xPowx (x:xs) n = xPowx xs n
 
 replaceFctVar :: Float -> [Token] -> [Token]
 replaceFctVar _ [] = []
@@ -255,7 +277,7 @@ toBasictoken :: HashMap String Var -> [Token] -> String -> [Token]
 toBasictoken hm tk except = 
     let maped = foldl (\acc x -> acc ++ varToToken hm except x) [] (transformFct tk)
         ret = case maped of
-            ((Op Minus):x1:xs) -> appMinus x1 : xs
+            ((Op Minus):x1@(Numb _ _):xs) -> appMinus x1 : xs
             _ -> maped
     in toBasictoken2 ret
     where
@@ -319,6 +341,9 @@ checkType lst hm = do
     where
         checkType2 :: [Token] -> [Token] -> HashMap String Var -> IO Var
         checkType2 ((Var name):[]) lst hm
+            | isOp (head lst) && head lst /= (Op Minus) && head lst /= (Op OpenBracket) = do
+                putStrLn "Error: Non expected operator"
+                return (Void)
             | checkBracket lst 0 = do
                 putStrLn "Error: Missmatched bracket"
                 return (Void)
@@ -336,7 +361,7 @@ checkType lst hm = do
             | otherwise = checkRat lst hm name
         checkType2 ((Var name):(Op OpenBracket):(Var var):(Op CloseBracket):[]) lst hm = checkFunction var lst hm name
         checkType2 _ _ _ = do
-            putStrLn "Error: No founded patern"
+            putStrLn "Error: Unknown patern"
             return (Void)
 
 checkBracket :: [Token] -> Int -> Bool
