@@ -2,8 +2,6 @@ import System.Environment
 import Data.List
 import Token
 import Parsing
-import System.Exit
-import Data.Char
 import System.IO
 import Var
 import Data
@@ -14,12 +12,7 @@ import Compute
 import CalcExpo
 import Text.Printf
 import Commands
-
-toInt :: String -> Int
-toInt [] = 9999
-toInt s
-    | any (\x -> not $ isNumber x) s = 9999
-    | otherwise = read s
+import Data.Char (toLower)
 
 getActFromUser :: HashMap String Var -> [String] -> IO ()
 getActFromUser hm history = do
@@ -31,22 +24,9 @@ getActFromUser hm history = do
         matchMove :: String -> IO ()
         matchMove x
             | str == "" = getActFromUser hm history
-            | str == "quit" = exitWith ExitSuccess
-            | head optionStr == "list" = do
-                putStr $ showVarMap hm (tail optionStr)
-                getActFromUser hm history
-            | head optionStr == "help" = do
-                putStrLn $ helper (tail optionStr)
-                getActFromUser hm  history
-            | head optionStr == "del" = do 
-                newHm <- delVar (tail optionStr) hm
-                getActFromUser newHm $ history ++ [newX]
-            | head optionStr == "replace" = do 
-                newHm <- replaceVar (tail optionStr) hm
-                getActFromUser newHm $ history ++ [newX]
-            | head optionStr == "history" = do
-                printHistory $ zip (reverse (take (toInt $ last optionStr) (reverse history))) [1..]
-                getActFromUser hm history
+            | head optionStr `elem` commandsList = do
+                (newHm, newHist) <- matchCommand optionStr hm history newX
+                getActFromUser newHm newHist 
             | length (filter (== '=') x) > 1 = do
                 putStrLn $ "Error: Multiple equal"
                 getActFromUser hm $ history ++ [newX]
@@ -82,11 +62,6 @@ getActFromUser hm history = do
                 str = map toLower x
                 optionStr = splitOn ":" str
                 checkError :: Var -> IO ()
-                -- checkError (Ima _ x)
-                --     | getExpo x > 1 || getExpo x < 0 = do
-                --         let print =  "Error: powered i is invalid"
-                --         putStrLn print
-                --         getActFromUser hm $ history ++ [newX]
                 checkError Void = do
                     let print = "Error: Unknown input"
                     putStrLn print
@@ -95,4 +70,10 @@ getActFromUser hm history = do
                     putVarLn var
                     getActFromUser (Hm.insert (getName var) var hm) $ history ++ [newX]
 
-main = getActFromUser (addConst empty) []
+main = do
+    args <- getArgs
+    if (any (\x -> x == "--help" || x == "-h") args)
+    then do
+        putStrLn $ helper []
+        getActFromUser (addConst empty) []
+    else getActFromUser (addConst empty) []

@@ -61,7 +61,7 @@ instance Show (Operator) where
     show OpenBracket = "("
     show CloseBracket = ")"
 
-data Compute = COp !Operator | CTk !Token | CVar !Var | CUnknown !String
+data Compute = COp !Operator | CTk !Token | CVar !Var | CUnknown !String deriving (Eq)
 instance Show (Compute) where
     show (COp x) = show x
     show (CTk x) = show x

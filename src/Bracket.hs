@@ -66,7 +66,6 @@ smallReduce :: [Token] -> [Token]
 smallReduce = smallReduce2 []
     where
         smallReduce2 ret [] = ret
-        -- smallReduce2 ret (a@(Numb _ _):b@(Op _):c@(Numb _ _):[]) = ret ++ [(getOp b) a c]
         smallReduce2 ret (a@(Op OpenBracket):b:c@(Op CloseBracket):xs) = smallReduce (ret ++ [b] ++ xs)
         smallReduce2 ret (a@(Numb _ _):b@(Op _):c@(Numb _ _):d@(Op CloseBracket):xs)
             | isCompatible (a, c, b) = smallReduce (ret ++ ((getOp b) a c : d : xs))
@@ -154,8 +153,6 @@ delBracket lst =
                     else (0, [UnParsed])
             resolveOpBracket _ _ _ = (0, [UnParsed])
 
--- salfeTail (x:xs) = xs
--- salfeTail [] = []
 multBr :: [Token] -> [Token] -> [Token]
 multBr lst lst2 = Op OpenBracket : (intersperse (Op Add) $ multBr2 (filter isNumb lst) (filter isNumb lst2)) ++ [Op CloseBracket]
     where

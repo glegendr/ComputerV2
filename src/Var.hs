@@ -1,4 +1,4 @@
-module Var (toVar, checkType, deployVar, endOfMat, toMat, replaceFctVar, checkBracket, checkMultNumber) where
+module Var (toVar, checkType, deployVar, endOfMat, toMat, replaceFctVar, checkBracket, checkMultNumber, Var.isIma, Var.isMat) where
 
 import Token
 import Parsing
@@ -24,8 +24,8 @@ checkMat lst hm name
     | checkComma newLst = do
         putStrLn "Error: Missmatched Comma"
         return Void
-    | checkBracket newLst 0 = do
-        putStrLn "Error: Missmatched Bracket"
+    | checkBracket newLst 0 False /= "" = do
+        putStrLn $ checkBracket newLst 0 False 
         return Void
     | (checkNumber splitted) = do
         putStrLn "Error: Not same number of element in matrice"
@@ -48,20 +48,27 @@ checkMat lst hm name
         checkComma [] = False
         checkComma (x@(Numb _ _):y@(Var ","):z@(Numb _ _):xs) = checkComma (z : xs)
         checkComma (x@(Var "]"):y@(Var ";"):z@(Var "["):xs) = checkComma xs
+        checkComma (x@(Var "]"):y@(Var ","):z@(Var "["):xs) = checkComma xs
         checkComma ((Var "]"):(Var "["):xs) = True
+        checkComma ((Numb _ _):(Var "["):xs) = True
         checkComma ((Numb _ _):(Numb _ _):xs) = True
         checkComma ((Var ","):_) = True
         checkComma ((Var ";"):_) = True
         checkComma (x:xs) = checkComma xs
-        checkBracket :: [Token] -> Int -> Bool
-        checkBracket [] 0 = False
-        checkBracket [] _ = True
-        checkBracket _ n
-            | n > 2 = True
-            | n < 0 = True
-        checkBracket ((Var "["):xs) n = checkBracket xs (n + 1)
-        checkBracket ((Var "]"):xs) n = checkBracket xs (n - 1)
-        checkBracket (_:xs) n = checkBracket xs n 
+        checkBracket :: [Token] -> Int -> Bool -> String
+        checkBracket [] 0 True = ""
+        checkBracket [] _ True = "Error: Missmatched Bracket"
+        checkBracket [] _ False = "Error: Matrix need a deapth of 2"
+        checkBracket lst 2 False = checkBracket lst 2 True
+        checkBracket _ n _ 
+            | n > 2 = "Error: Matrix need a deapth of 2"
+            | n < 0 = "Error: Missmatched Bracket"
+        checkBracket ((Var "["):xs) n b = checkBracket xs (n + 1) b
+        checkBracket ((Var "]"):xs) n b = checkBracket xs (n - 1) b
+        checkBracket ((Op MatricialMult):xs) n b
+            | n == 0 = checkBracket xs n b
+            | otherwise = "Error: Operator in Matrix"
+        checkBracket (_:xs) n b = checkBracket xs n b
         checkNumber :: [[[Float]]] -> Bool
         checkNumber [] = False
         checkNumber (lst:xs)
@@ -86,6 +93,7 @@ toMatToken hm ((Op Minus):x@(Var name):xs)
 toMatToken hm (x@(Var name):xs)
     | member name hm = case hm ! name of
         (Rat _ value) -> (Numb value 0) : toMatToken hm xs
+        (Mat _ tk) ->  stringTotokenLst (show tk) ++ toMatToken hm xs
         _ -> x : toMatToken hm xs
 toMatToken hm (x:xs) = x : toMatToken hm xs
 
@@ -101,7 +109,7 @@ toMat :: [Token] -> HashMap String Var -> [[Float]]
 toMat [] _ = []
 toMat x hm = folded
     where
-        splitted = map (\x -> read x :: [[Float]]) $  splitOn ("**") $ showTkList $ toMatToken hm $ map toComma x
+        splitted = map (\x -> read x :: [[Float]]) $ splitOn ("**") $ showTkList $ toMatToken hm $ map toComma x
         folded = foldl1 (\acc x -> matricialMult acc (transpose x)) splitted
 
 toComma :: Token -> Token
@@ -115,6 +123,7 @@ matricialMult (x:xs) cols = matricialMult' x cols : matricialMult xs cols
 matricialMult' :: [Float] -> [[Float]] -> [Float]
 matricialMult' _ [] = []
 matricialMult' line (x:xs) = (sum $ zipWith (\x y -> x * y) line x) : matricialMult' line xs
+
 {-- RATIONAL --}
 
 checkRat :: [Token] -> HashMap String Var -> String -> IO Var
@@ -158,9 +167,6 @@ checkIma lst hm name
         let (Just x) = find isVar newLst
         putStrLn $ "Error: Var \"" ++ show x ++ "\" not expected"
         return Void
-    -- | powerI newLst = do
-    --     putStrLn "Error: powered i is invalid"
-    --     return Void
     | any (== UnParsed) newLst = do
         putStrLn "Error: Parse error"
         return Void
@@ -298,6 +304,9 @@ checkType :: [Token] -> HashMap String Var -> IO Var
 checkType lst hm = do
     let bef = takeWhile (/= (Op Equal)) lst
     let aft = dropWhile (/= (Op Equal)) lst
+    case bef of
+        [(Var "x")] -> putStrLn "Warning: Using \"x\" as variable name can create conflit when computing."
+        _ -> return ()
     case aft of
         [] -> do
             putStrLn "Error: Unknown Patern"

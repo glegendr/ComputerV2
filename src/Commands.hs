@@ -1,10 +1,12 @@
-module Commands (delVar, replaceVar, printHistory, helper) where
+module Commands (delVar, replaceVar, printHistory, helper, commandsList, matchCommand) where
 
 import Data.List
 import Data.HashMap.Strict as Hm (HashMap, empty, insert, foldl', member, (!), delete)
 import Var
 import Data
 import Text.Printf
+import System.Exit
+import Data.Char (isNumber)
 
 delVar :: [String] -> HashMap String Var -> IO (HashMap String Var)
 delVar [] hm = return hm
@@ -97,16 +99,16 @@ helper' (x:xs)
     | otherwise                                  = helper' xs 
 
 helpHelp =
-    let ini = "\n  + help: print help message"
-        hp1 = "\n  | <h>/<help>: Print this message"
-        hp2 = "\n  | <c>/<commands>: Print command help"
-        hp3 = "\n  | <l>/<list>: Print the command list help"
-        hp4 = "\n  | <i>/<history>: Print the command history help"
-        hp5 = "\n  | <d>/<del>: Print the command del help"
-        hp6 = "\n  | <r>/<replace>: Print the command replace help"
-        hp7 = "\n  | <q>/<quit>: Print the command quit help"
-        hp8 = "\n  | <o>/<ope>/<operators>: Print operators help"
-        hp9 = "\n  | <?>/<computation>: Print computation help"
+    let ini = "\n  + help: Display help message"
+        hp1 = "\n  | <h>/<help>: Display this message"
+        hp2 = "\n  | <c>/<commands>: List all existing command"
+        hp3 = "\n  | <l>/<list>: Display the command list"
+        hp4 = "\n  | <i>/<history>: Display the command history"
+        hp5 = "\n  | <d>/<del>: Display the command del"
+        hp6 = "\n  | <r>/<replace>: Display the command replace"
+        hp7 = "\n  | <q>/<quit>: Display the command quit"
+        hp8 = "\n  | <o>/<ope>/<operators>: Display all operators"
+        hp9 = "\n  | <?>/<computation>: Display how to compute"
     in ini++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9
 
 listHelp =
@@ -142,15 +144,16 @@ quitHelp =
 commandsHelp =
     let ini = "\n  + Commands:"
         fm1 = "\n  | + (commandName:commandArgs):"
-        hp1 = "\n  | | + help: Print this message"
-        hp2 = "\n  | | | <h>/<help>: Print this message"
-        hp3 = "\n  | | | <c>/<commands>: Print command help"
-        hp4 = "\n  | | | <l>/<list>: Print the command list help"
-        hp5 = "\n  | | | <i>/<history>: Print the command history help"
-        hp6 = "\n  | | | <d>/<del>: Print the command del help"
-        hp7 = "\n  | | | <r>/<replace>: Print the command replace help"
-        hp8 = "\n  | | | <o>/<ope>/<operators>: Print operators help"
-        hp9 = "\n  | | | <?>/<computation>: Print computation help"
+        hp0 = "\n  | | + help: Display help message"
+        hp1 = "\n  | | | <h>/<help>: Display this message"
+        hp2 = "\n  | | | <c>/<commands>: List all existing command"
+        hp3 = "\n  | | | <l>/<list>: Display the command list"
+        hp4 = "\n  | | | <i>/<history>: Display the command history"
+        hp5 = "\n  | | | <d>/<del>: Display the command del"
+        hp6 = "\n  | | | <r>/<replace>: Display the command replace"
+        hp7 = "\n  | | | <q>/<quit>: Display the command quit"
+        hp8 = "\n  | | | <o>/<ope>/<operators>: Display all operators"
+        hp9 = "\n  | | | <?>/<computation>: Display how to compute"
         ls1 = "\n  | | + list: List all existing var"
         ls2 = "\n  | | | <r>/<rat>/<rationals>: List all exsting rationals"
         ls3 = "\n  | | | <i>/<ima>/<imaginary>: List all exsting imaginary"
@@ -168,7 +171,7 @@ commandsHelp =
         re2 = "\n  | | / <X:Y> Replace var name X by Y. If Y exist the 2 name are swapping"
         fm2 = "\n  | + (comandName):"
         qit = "\n  | | + quit: quit the program"
-    in ini++fm1++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++ls1++ls2++ls3++ls4++ls5++ls6++ls7++hi1++hi2++de1++de2++de3++de4++re1++re2++fm2++qit
+    in ini++fm1++hp0++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++ls1++ls2++ls3++ls4++ls5++ls6++ls7++hi1++hi2++de1++de2++de3++de4++re1++re2++fm2++qit
 
 operatorsHelp =
     let ini = "\n  + Operators:"
@@ -186,3 +189,31 @@ computationHelp =
         fr1 = "\n  | (FirstPart = SecondPart ?): Try solving this equation"
         fr2 = "\n  | (FristPart = ?): Display reduce form of the FirstPart"
     in ini++fr1++fr2
+
+
+commandsList = ["quit", "list", "help", "del", "replace", "history"]
+
+toInt :: String -> Int
+toInt [] = 9999
+toInt s
+    | any (\x -> not $ isNumber x) s = 9999
+    | otherwise = read s
+
+matchCommand :: [String] -> HashMap String Var -> [String] -> String -> IO (HashMap String Var, [String])
+matchCommand optionStr hm history newX
+    | head optionStr == "quit" = exitWith ExitSuccess
+    | head optionStr == "list" = do
+        putStr $ showVarMap hm (tail optionStr)
+        return (hm, history)
+    | head optionStr == "help" = do
+        putStrLn $ helper (tail optionStr)
+        return (hm,  history)
+    | head optionStr == "del" = do 
+        newHm <- delVar (tail optionStr) hm
+        return (newHm, history ++ [newX])
+    | head optionStr == "replace" = do 
+        newHm <- replaceVar (tail optionStr) hm
+        return (newHm,  history ++ [newX])
+    | head optionStr == "history" = do
+        printHistory $ zip (reverse (take (toInt $ last optionStr) (reverse history))) [1..]
+        return (hm, history)
