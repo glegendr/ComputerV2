@@ -10,7 +10,6 @@ import System.Exit
 import Data.Char (isNumber)
 import Graphics.Rendering.Chart.Easy
 import Graphics.Rendering.Chart.Backend.Diagrams(toFile)
-import Debug.Trace
 import Data.Time
 import System.Directory
 import Data.List.Split (splitOn)

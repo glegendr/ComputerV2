@@ -10,7 +10,6 @@ import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Bracket
 import Polish
 import CalcExpo
-import Debug.Trace
 
 {-- MATRICE --}
 
