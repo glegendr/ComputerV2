@@ -4,9 +4,16 @@ import Data.List
 import Data.HashMap.Strict as Hm (HashMap, empty, insert, foldl', member, (!), delete)
 import Var
 import Data
+import Token
 import Text.Printf
 import System.Exit
 import Data.Char (isNumber)
+import Graphics.Rendering.Chart.Easy
+import Graphics.Rendering.Chart.Backend.Diagrams(toFile)
+import Debug.Trace
+import Data.Time
+import System.Directory
+import Data.List.Split (splitOn)
 
 delVar :: [String] -> HashMap String Var -> IO (HashMap String Var)
 delVar [] hm = return hm
@@ -93,6 +100,7 @@ helper' (x:xs)
     | x == "i" || x == "history"                 = historyHelp ++ helper' xs
     | x == "d" || x == "del"                     = delHelp ++ helper' xs
     | x == "r" || x == "replace"                 = replaceHelp ++ helper' xs
+    | x == "s" || x == "show"                    = showHelp ++ helper' xs
     | x == "q" || x == "quit"                    = quitHelp ++ helper' xs
     | x == "o" || x == "ope" || x == "operators" = operatorsHelp ++ helper' xs 
     | x == "?" || x == "computation"             = computationHelp ++ helper' xs
@@ -106,10 +114,11 @@ helpHelp =
         hp4 = "\n  | <i>/<history>: Display the command history"
         hp5 = "\n  | <d>/<del>: Display the command del"
         hp6 = "\n  | <r>/<replace>: Display the command replace"
-        hp7 = "\n  | <q>/<quit>: Display the command quit"
-        hp8 = "\n  | <o>/<ope>/<operators>: Display all operators"
-        hp9 = "\n  | <?>/<computation>: Display how to compute"
-    in ini++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9
+        hp7 = "\n  | <s>/<show>: Display the command show"
+        hp8 = "\n  | <q>/<quit>: Display the command quit"
+        hp9 = "\n  | <o>/<ope>/<operators>: Display all operators"
+        hpA = "\n  | <?>/<computation>: Display how to compute"
+    in ini++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++hpA
 
 listHelp =
     let ini = "\n  + list: List all existing var"
@@ -138,6 +147,16 @@ replaceHelp =
         re2 = "\n  | <X:Y> Replace var name X by Y. If Y exist the 2 name are swapping"
     in ini++re2
 
+showHelp =
+    let ini = "\n  + show: Create a plot"
+        sh1 = "\n  | <f=x,y..>/<fct=x,y..>/<function=x,y..> Function to display"
+        sh2 = "\n  | <o=x>/<out=x>/<output=x> Name of created file. Default is the crearion date"
+        sh3 = "\n  | <title=x>/<t=x> Title of the graph. Default is the crearion date"
+        sh4 = "\n  | <min=x> Start of the X axis. Default is -100"
+        sh5 = "\n  | <max=x> End of the X axis. Default is 100"
+        sh6 = "\n  | <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
+    in ini ++ sh1 ++ sh2 ++ sh3 ++ sh4 ++ sh5 ++ sh6
+
 quitHelp = 
     "\n  + quit: quit the program"
 
@@ -151,9 +170,10 @@ commandsHelp =
         hp4 = "\n  | | | <i>/<history>: Display the command history"
         hp5 = "\n  | | | <d>/<del>: Display the command del"
         hp6 = "\n  | | | <r>/<replace>: Display the command replace"
-        hp7 = "\n  | | | <q>/<quit>: Display the command quit"
-        hp8 = "\n  | | | <o>/<ope>/<operators>: Display all operators"
-        hp9 = "\n  | | | <?>/<computation>: Display how to compute"
+        hp7 = "\n  | | | <s>/<show>: Display the command show"
+        hp8 = "\n  | | | <q>/<quit>: Display the command quit"
+        hp9 = "\n  | | | <o>/<ope>/<operators>: Display all operators"
+        hpA = "\n  | | | <?>/<computation>: Display how to compute"
         ls1 = "\n  | | + list: List all existing var"
         ls2 = "\n  | | | <r>/<rat>/<rationals>: List all exsting rationals"
         ls3 = "\n  | | | <i>/<ima>/<imaginary>: List all exsting imaginary"
@@ -168,10 +188,17 @@ commandsHelp =
         de3 = "\n  | | | <a>/<all> del every var"
         de4 = "\n  | | | <d>/<dup>/<duplicate> delete duplicates"
         re1 = "\n  | | + replace: Replace var name by an other"
-        re2 = "\n  | | / <X:Y> Replace var name X by Y. If Y exist the 2 name are swapping"
+        re2 = "\n  | | | <X:Y> Replace var name X by Y. If Y exist the 2 name are swapping"
+        sh0 = "\n  | | + show: Create a plot"
+        sh1 = "\n  | | | <f=x,y..>/<fct=x,y..>/<function=x,y..> Function to display"
+        sh2 = "\n  | | | <o=x>/<out=x>/<output=x> Name of created file. Default is the crearion date"
+        sh3 = "\n  | | | <title=x>/<t=x> Title of the graph. Default is the crearion date"
+        sh4 = "\n  | | | <min=x> Start of the X axis. Default is -100"
+        sh5 = "\n  | | | <max=x> End of the X axis. Default is 100"
+        sh6 = "\n  | | / <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
         fm2 = "\n  | + (comandName):"
         qit = "\n  | | + quit: quit the program"
-    in ini++fm1++hp0++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++ls1++ls2++ls3++ls4++ls5++ls6++ls7++hi1++hi2++de1++de2++de3++de4++re1++re2++fm2++qit
+    in ini++fm1++hp0++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++hpA++ls1++ls2++ls3++ls4++ls5++ls6++ls7++hi1++hi2++de1++de2++de3++de4++re1++re2++sh0++sh1++sh2++sh3++sh4++sh5++sh6++fm2++qit
 
 operatorsHelp =
     let ini = "\n  + Operators:"
@@ -191,13 +218,84 @@ computationHelp =
     in ini++fr1++fr2
 
 
-commandsList = ["quit", "list", "help", "del", "replace", "history"]
+commandsList = ["quit", "list", "help", "del", "replace", "history", "show"]
 
-toInt :: String -> Int
-toInt [] = 9999
-toInt s
-    | any (\x -> not $ isNumber x) s = 9999
+toInt :: Int -> String -> Int
+toInt d [] = d
+toInt d s
+    | any (\x -> not $ isNumber x) s = d
     | otherwise = read s
+
+signal :: [Double] -> Double -> [(Double,Double)]
+signal xs minus = [ (x,((sin (x*3.14159/45) + 1) / 2 * (sin (x*3.14159/5))) - minus) | x <- xs ]
+
+plotAllFct min max scale (a@(Fct _ _ _):[]) = plot (line (show a) [[(x, fctToFloat a x) | x <- [min,(min + scale)..max] ]])
+plotAllFct min max scale (a@(Rat _ x):[]) = plot (line (show a) [[(min, x), (max, x)]])
+plotAllFct min max scale (a@(Fct _ _ _):xs) = do
+    plot (line (show a) [[(x, fctToFloat a x) | x <- [min,(min + scale)..max]]])
+    plotAllFct min max scale xs
+plotAllFct min max scale (a@(Rat _ x):xs) = do 
+    plot (line (show a) [[(min, x), (max, x)]])
+    plotAllFct min max scale xs
+
+showPlot' out title fct min max scale = toFile def ("charts/"++ out ++ ".svg") $ do
+    layout_title .= title
+    plotAllFct min max scale fct
+
+getFct :: HashMap String Var -> [String] -> [Var]
+getFct _ [] = []
+getFct hm (x:xs)
+    | member x hm = case hm ! x of
+        a@(Fct _ _ _) -> a : getFct hm xs
+        a@(Rat _ _) -> a : getFct hm xs
+        _ -> getFct hm xs
+    | otherwise = getFct hm xs
+
+toFloat :: Float -> String -> Float
+toFloat d [] = d
+toFloat d ('-':s) = case toToken s of
+    Numb x _ -> -x
+    _ -> -d
+toFloat d s = case toToken s of
+    Numb x _ -> x
+    _ -> d
+
+
+getNum :: Float -> [String] -> Float
+getNum def ((_:x):xs) = toFloat def x
+getNum def _ = def
+
+getFirst :: String -> [String] -> String
+getFirst d ((_:x):xs) = x
+getFirst d _ = d
+
+showPlot optionStr hm = do
+        time <- getCurrentTime
+        let defName = map (\x -> if x == ' ' || x == ':' || x == '.' then '_' else x) $ "chart_" ++ show time
+        let newLst = map (span (/= '=')) optionStr
+        let fct = getFct hm $ foldl (++) [] $ map (splitOn ",") [filter (/= '=') y | (x, y) <- newLst, x == "function" || x == "fct" || x == "f"]
+        let out = getFirst defName [y | (x, y) <- newLst, x == "output" || x == "out" || x == "o"]
+        let title = getFirst out [y | (x, y) <- newLst, x == "title" || x == "t"]
+        let max = getNum 100 [y | (x, y) <- newLst, x == "max"]
+        let min = getNum (-100) [y | (x, y) <- newLst, x == "min"]
+        let scale = abs $ getNum ((min - max) / 1000) [y | (x, y) <- newLst, x == "scale" || x == "s"]
+        let trueOut = if (out == defName && title /= defName)
+            then title
+            else defName
+        putStrLn $ "  Out:      " ++ trueOut
+        putStrLn $ "  Title:    " ++ title
+        putStrLn $ "  Function: " ++ show fct
+        putStrLn $ "  Max:      " ++ show max
+        putStrLn $ "  Min:      " ++ show min
+        putStrLn $ "  Scale:    " ++ show scale
+        createDirectoryIfMissing True "charts"
+        if (fct == [])
+        then putStrLn "Error: No function found"
+        else if (max < min)
+        then putStrLn "Error: Maximum is less than minimum"
+        else if (min + scale > max)
+        then putStrLn "Error: Scale too big for difference between minimum and maximum"
+        else showPlot' trueOut title fct min max scale
 
 matchCommand :: [String] -> HashMap String Var -> [String] -> String -> IO (HashMap String Var, [String])
 matchCommand optionStr hm history newX
@@ -215,5 +313,8 @@ matchCommand optionStr hm history newX
         newHm <- replaceVar (tail optionStr) hm
         return (newHm,  history ++ [newX])
     | head optionStr == "history" = do
-        printHistory $ zip (reverse (take (toInt $ last optionStr) (reverse history))) [1..]
+        printHistory $ zip (reverse (take (toInt 9999 $ last optionStr) (reverse history))) [1..]
         return (hm, history)
+    | head optionStr == "show" = do
+        showPlot optionStr hm
+        return (hm, history ++ [newX])

@@ -37,7 +37,7 @@ instance Show (Var) where
     show (Rat name value) = name ++ " = " ++ show value
     show (Ima name value) = name ++ " = " ++ showTkListName "i" value
     show (Mat name tab) = name ++ " = " ++ show tab
-    show (Fct name var value) = name ++ "(" ++ var ++ ") = " ++ showTkListName var value
+    show (Fct name var value) = init $ name ++ "(" ++ var ++ ") = " ++ showTkListName var value
     show Void = "Error Input"
 
 data Token = Op !Operator | Numb !Float !Int | Var !String | UnParsed deriving (Eq)
@@ -69,6 +69,7 @@ instance Show (Compute) where
     show (CUnknown x) = show x
 
 constList = [(Rat "pi" pi), (Rat "phi" 1.618033988749895)]
+
 constName = map getName constList
 addConst hm = foldl (\acc x -> Hm.insert (getName x) x acc) hm constList
 

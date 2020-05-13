@@ -1,4 +1,4 @@
-module Var (toVar, checkType, deployVar, endOfMat, toMat, replaceFctVar, checkBracket, checkMultNumber, Var.isIma, Var.isMat) where
+module Var (toVar, checkType, deployVar, endOfMat, toMat, replaceFctVar, checkBracket, checkMultNumber, Var.isIma, Var.isMat, fctToFloat) where
 
 import Token
 import Parsing
@@ -235,7 +235,11 @@ replaceFctVar v (x@(Numb a b):xs)
 replaceFctVar v (x:xs) = x : replaceFctVar v xs
 
 fctToToken :: Var -> Float -> Token
-fctToToken (Fct _ _ tkLst) value = Numb (simpleReduce $ solvePolish $ delBracket $ smallReduce $ replaceFctVar value tkLst) 0
+fctToToken v value = Numb (fctToFloat v value) 0
+
+fctToFloat :: Var -> Float -> Float
+fctToFloat (Fct _ _ tkLst) value = simpleReduce $ solvePolish $ delBracket $ smallReduce $ replaceFctVar value tkLst
+fctToFloat (Rat _ x) _ = x
 
 varToToken :: HashMap String Var -> String -> Token -> [Token] 
 varToToken hm except x@(Var name)

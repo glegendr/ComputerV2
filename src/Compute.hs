@@ -9,6 +9,7 @@ import Var
 import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Parsing
 import CalcExpo
+import Debug.Trace
 
 printEnd :: [Token] -> String
 printEnd tkLst =
@@ -62,10 +63,10 @@ checkCompute lst hm
 
 computeMe :: [Compute] -> [Compute] -> String
 computeMe (x:[]) [] = show x
-computeMe (x:[]) (y:[]) = show $ x == y
+-- computeMe (x:[]) (y:[]) = show $ x == y
 computeMe bef aft =
         let solved = solvePolish $ delBracket $ smallReduce $ allLeft (computeToToken bef ++ [Op Equal] ++ computeToToken aft) False
-        in  if (any (== UnParsed) solved)
+        in  trace (show solved) $ if (any (== UnParsed) solved)
             then "Can't solve this problem"
             else printEnd $ intersperse (Op Add) $ filter isNumbNotNull $ addAll $ filter isNumbNotNull solved
 
