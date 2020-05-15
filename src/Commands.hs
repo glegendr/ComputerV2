@@ -153,8 +153,10 @@ showHelp =
         sh3 = "\n  | <title=x>/<t=x> Title of the graph. Default is the crearion date"
         sh4 = "\n  | <min=x> Start of the X axis. Default is -100"
         sh5 = "\n  | <max=x> End of the X axis. Default is 100"
-        sh6 = "\n  | <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
-    in ini ++ sh1 ++ sh2 ++ sh3 ++ sh4 ++ sh5 ++ sh6
+        sh6 = "\n  | <down=x> Start of the Y axis. Default is -100"
+        sh7 = "\n  | <up=x> End of the Y axis. Default is 100"
+        sh8 = "\n  | <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
+    in ini ++ sh1 ++ sh2 ++ sh3 ++ sh4 ++ sh5 ++ sh6 ++ sh7 ++ sh8
 
 quitHelp = 
     "\n  + quit: quit the program"
@@ -194,10 +196,12 @@ commandsHelp =
         sh3 = "\n  | | | <title=x>/<t=x> Title of the graph. Default is the crearion date"
         sh4 = "\n  | | | <min=x> Start of the X axis. Default is -100"
         sh5 = "\n  | | | <max=x> End of the X axis. Default is 100"
-        sh6 = "\n  | | / <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
+        sh6 = "\n  | | | <down=x> Start of the Y axis. Default is -100"
+        sh7 = "\n  | | | <up=x> End of the Y axis. Default is 100"
+        sh8 = "\n  | | / <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
         fm2 = "\n  | + (comandName):"
         qit = "\n  | | + quit: quit the program"
-    in ini++fm1++hp0++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++hpA++ls1++ls2++ls3++ls4++ls5++ls6++ls7++hi1++hi2++de1++de2++de3++de4++re1++re2++sh0++sh1++sh2++sh3++sh4++sh5++sh6++fm2++qit
+    in ini++fm1++hp0++hp1++hp2++hp3++hp4++hp5++hp6++hp7++hp8++hp9++hpA++ls1++ls2++ls3++ls4++ls5++ls6++ls7++hi1++hi2++de1++de2++de3++de4++re1++re2++sh0++sh1++sh2++sh3++sh4++sh5++sh6++sh7++sh8++fm2++qit
 
 operatorsHelp =
     let ini = "\n  + Operators:"
@@ -228,19 +232,6 @@ toInt d s
 signal :: [Double] -> Double -> [(Double,Double)]
 signal xs minus = [ (x,((sin (x*3.14159/45) + 1) / 2 * (sin (x*3.14159/5))) - minus) | x <- xs ]
 
-plotAllFct min max scale (a@(Fct _ _ _):[]) = plot (line (show a) [[(x, fctToFloat a x) | x <- [min,(min + scale)..max] ]])
-plotAllFct min max scale (a@(Rat _ x):[]) = plot (line (show a) [[(min, x), (max, x)]])
-plotAllFct min max scale (a@(Fct _ _ _):xs) = do
-    plot (line (show a) [[(x, fctToFloat a x) | x <- [min,(min + scale)..max]]])
-    plotAllFct min max scale xs
-plotAllFct min max scale (a@(Rat _ x):xs) = do 
-    plot (line (show a) [[(min, x), (max, x)]])
-    plotAllFct min max scale xs
-
-showPlot' out title fct min max scale = toFile def ("charts/"++ out ++ ".svg") $ do
-    layout_title .= title
-    plotAllFct min max scale fct
-
 getFct :: HashMap String Var -> [String] -> [Var]
 getFct _ [] = []
 getFct hm (x:xs)
@@ -268,6 +259,19 @@ getFirst :: String -> [String] -> String
 getFirst d ((_:x):xs) = x
 getFirst d _ = d
 
+plotAllFct min max up down scale (a@(Fct _ _ _):[]) = plot (points (show a) [(x, y) | x <- [min,(min + scale)..max], y <- [fctToFloat a x], y > down && y < up])
+plotAllFct min max up down scale (a@(Rat _ x):[]) = plot (line (show a) [[(min, x), (max, x)]])
+plotAllFct min max up down scale (a@(Fct _ _ _):xs) = do
+    plot (points (show a) [(x, y) | x <- [min,(min + scale)..max], y <- [fctToFloat a x], y > down && y < up])
+    plotAllFct min max up down scale xs
+plotAllFct min max up down scale (a@(Rat _ x):xs) = do 
+    plot (line (show a) [[(min, x), (max, x)]])
+    plotAllFct min max up down scale xs
+
+showPlot' out title fct min max up down scale = toFile def ("charts/"++ out ++ ".svg") $ do
+    layout_title .= title
+    plotAllFct min max up down scale fct
+
 showPlot optionStr hm = do
         time <- getCurrentTime
         let defName = map (\x -> if x == ' ' || x == ':' || x == '.' then '_' else x) $ "chart_" ++ show time
@@ -275,26 +279,33 @@ showPlot optionStr hm = do
         let fct = getFct hm $ foldl (++) [] $ map (splitOn ",") [filter (/= '=') y | (x, y) <- newLst, x == "function" || x == "fct" || x == "f"]
         let out = getFirst defName [y | (x, y) <- newLst, x == "output" || x == "out" || x == "o"]
         let title = getFirst out [y | (x, y) <- newLst, x == "title" || x == "t"]
-        let max = getNum 100 [y | (x, y) <- newLst, x == "max"]
         let min = getNum (-100) [y | (x, y) <- newLst, x == "min"]
-        let scale = abs $ getNum ((min - max) / 1000) [y | (x, y) <- newLst, x == "scale" || x == "s"]
+        let max = getNum 100 [y | (x, y) <- newLst, x == "max"]
+        let down = getNum (-100) [y | (x, y) <- newLst, x == "down"]
+        let up = getNum (100) [y | (x, y) <- newLst, x == "up"]
+        let scale = abs $ getNum ((min - max) / 2000) [y | (x, y) <- newLst, x == "scale" || x == "s"]
         let trueOut = if (out == defName && title /= defName)
             then title
             else defName
         putStrLn $ "  Out:      " ++ trueOut
         putStrLn $ "  Title:    " ++ title
         putStrLn $ "  Function: " ++ show fct
-        putStrLn $ "  Max:      " ++ show max
         putStrLn $ "  Min:      " ++ show min
+        putStrLn $ "  Max:      " ++ show max
+        putStrLn $ "  Down:     " ++ show down
+        putStrLn $ "  Up:       " ++ show up
         putStrLn $ "  Scale:    " ++ show scale
+        putStrLn $ "\n  Found your plot at charts/" ++ trueOut ++ ".svg"
         createDirectoryIfMissing True "charts"
         if (fct == [])
         then putStrLn "Error: No function found"
         else if (max < min)
         then putStrLn "Error: Maximum is less than minimum"
+        else if (up < down)
+        then putStrLn "Error: Up is less than down"
         else if (min + scale > max)
         then putStrLn "Error: Scale too big for difference between minimum and maximum"
-        else showPlot' trueOut title fct min max scale
+        else showPlot' trueOut title fct min max up down scale
 
 matchCommand :: [String] -> HashMap String Var -> [String] -> String -> IO (HashMap String Var, [String])
 matchCommand optionStr hm history newX

@@ -65,7 +65,9 @@ computeMe (x:[]) [] = show x
 computeMe (x:[]) (y:[])
     | isImaCompute x || isImaCompute y || isMatCompute x || isMatCompute y = show $ x == y
 computeMe bef aft =
-        let solved = solvePolish $ delBracket $ smallReduce $ allLeft (computeToToken bef ++ [Op Equal] ++ computeToToken aft) False
+        let
+            lefted = allLeft (computeToToken bef ++ [Op Equal] ++ computeToToken aft) False
+            solved = solvePolish $ delBracket $ smallReduce lefted
         in  if (any (== UnParsed) solved)
             then "Can't solve this problem"
             else printEnd $ intersperse (Op Add) $ filter isNumbNotNull $ addAll $ filter isNumbNotNull solved

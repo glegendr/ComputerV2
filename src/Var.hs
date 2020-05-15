@@ -10,6 +10,7 @@ import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Bracket
 import Polish
 import CalcExpo
+import Debug.Trace
 
 {-- MATRICE --}
 
@@ -176,8 +177,11 @@ checkIma lst hm name
     | isOperatorError lst = do
         putStrLn $ "Error: Operator error"
         return Void
-    | xPowx newLst 0 = do
+    | xOpAfterx (Pow) newLst 0 = do
         putStrLn $ "Error: Unknown in power"
+        return Void
+    | xOpBeforex (Mod) newLst || xOpAfterx (Mod) newLst 0 = do
+        putStrLn $ "Error: Unknown in modulo"
         return Void
     | otherwise = return (Ima name []) 
     where
@@ -221,8 +225,11 @@ checkFunction var lst hm name
     | isOperatorError lst = do
         putStrLn $ "Error: Operator error"
         return Void
-    | xPowx newLst 0 = do
+    | xOpAfterx (Pow) newLst 0 = do
         putStrLn $ "Error: Unknown in power"
+        return Void
+    | xOpBeforex (Mod) newLst || xOpAfterx (Mod) newLst 0 = do
+        putStrLn $ "Error: Unknown in modulo"
         return Void
     | otherwise = return (Fct name var [])
     where
@@ -233,20 +240,43 @@ toFct lst hm var = makeItRedable $ intersperse (Op Add) $ addAll $ filter isNumb
 
 {-- MANAGER --}
 
-xPowx :: [Token] -> Int -> Bool
-xPowx [] _ = False
-xPowx ((Numb _ x):_) n
+xOpBeforex :: Operator -> [Token] -> Bool
+xOpBeforex = xOpBeforex' 0 False False
+
+xOpBeforex' :: Int -> Bool -> Bool -> Operator -> [Token] -> Bool
+xOpBeforex' _ _ _ ope [] = False
+xOpBeforex' n saw saw2 ope ((Numb _ x):(Op ope2):xs)
+    | ope == ope2 && x /= 0 = True
+    | ope2 /= OpenBracket && ope2 /= CloseBracket && getPrecedenceOp ope2 > getPrecedenceOp ope && x /= 0 = xOpBeforex' n saw True ope xs
+xOpBeforex' n saw saw2 ope ((Numb _ x):xs)
+    | n /= 0 && x /= 0 = xOpBeforex' n True saw2 ope xs
+xOpBeforex' n saw saw2 ope ((Op OpenBracket):xs) = xOpBeforex' (n + 1) saw saw2 ope xs
+xOpBeforex' n saw saw2 ope ((Op CloseBracket):(Op ope2):xs)
+    | ope == ope2 && saw = True
+xOpBeforex' n saw saw2 ope ((Op CloseBracket):xs)
+    | (n - 1) == 0 = xOpBeforex' 0 False saw2 ope xs
+xOpBeforex' n saw saw2 ope ((Op ope2):xs)
+    | ope2 == ope && saw2 = True
+    | ope2 /= OpenBracket && ope2 /= CloseBracket && getPrecedenceOp ope2 > getPrecedenceOp ope = xOpBeforex' n saw saw2 ope xs
+    | otherwise = xOpBeforex' n saw False ope xs
+xOpBeforex' n saw saw2 ope (x:xs) = xOpBeforex' n saw saw2 ope xs
+
+
+xOpAfterx :: Operator -> [Token] -> Int -> Bool
+xOpAfterx ope [] _ = False
+xOpAfterx ope ((Numb _ x):_) n
     | x /= 0 && n /= 0 = True
-xPowx ((Op OpenBracket):xs) n
-    | n == 0 = xPowx xs n
-    | otherwise = xPowx xs (n + 1)
-xPowx ((Op Pow):(Op OpenBracket):xs) n = xPowx xs (n + 1)
-xPowx ((Op Pow):(Numb _ x):xs) _
-    | x /= 0 = True
-xPowx ((Op CloseBracket):xs) n
-    | n == 0 = xPowx xs n
-    | otherwise = xPowx xs (n - 1)
-xPowx (x:xs) n = xPowx xs n
+xOpAfterx ope ((Op OpenBracket):xs) n
+    | n == 0 = xOpAfterx ope xs n
+    | otherwise = xOpAfterx ope xs (n + 1)
+xOpAfterx ope ((Op ope2):(Op OpenBracket):xs) n
+    | ope == ope2 = xOpAfterx ope xs (n + 1)
+xOpAfterx ope ((Op ope2):(Numb _ x):xs) _
+    | ope == ope2 && x /= 0 = True
+xOpAfterx ope ((Op CloseBracket):xs) n
+    | n == 0 = xOpAfterx ope xs n
+    | otherwise = xOpAfterx ope xs (n - 1)
+xOpAfterx ope (x:xs) n = xOpAfterx ope xs n
 
 replaceFctVar :: Float -> [Token] -> [Token]
 replaceFctVar _ [] = []
@@ -339,7 +369,7 @@ checkType lst hm = do
         _ -> checkType2 bef (tail aft) hm
     where
         checkType2 :: [Token] -> [Token] -> HashMap String Var -> IO Var
-        checkType2 ((Var name):[]) lst hm
+        checkType2 ((Var name):_) lst hm
             | isOp (head lst) && head lst /= (Op Minus) && head lst /= (Op OpenBracket) = do
                 putStrLn "Error: Non expected operator"
                 return (Void)
@@ -355,6 +385,7 @@ checkType lst hm = do
             | any (\x -> not $ isLetter x) name = do
                 putStrLn "Error: Wrong var name"
                 return (Void)
+        checkType2 ((Var name):[]) lst hm
             | (Var "i") `elem` lst || any (Var.isIma hm) lst = checkIma lst hm name
             | (Var "[") `elem` lst || any (Var.isMat hm) lst = checkMat lst hm name
             | otherwise = checkRat lst hm name
@@ -365,7 +396,7 @@ checkType lst hm = do
 
 checkBracket :: [Token] -> Int -> Bool
 checkBracket [] 0 = False
-checkBracket [] n = True
+checkBracket [] _ = True
 checkBracket ((Op OpenBracket):xs) n = checkBracket xs (n + 1)
 checkBracket ((Op CloseBracket):xs) n = checkBracket xs (n - 1)
 checkBracket (_:xs) n = checkBracket xs n 

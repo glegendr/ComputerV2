@@ -157,7 +157,9 @@ The show command creates a plot of the given fuction
 |t=x||title=x|Title of the graph|Crearion date or `output` if set|
 |||min=x|Start of the X axis|-100|
 |||max=x|End of the X axis|100|
-|s=x||scale=x|Scaling between each calculation dot|((min - max) / 1000)|
+|||down=x|Start of the Y axis|-100|
+|||up=x|End of the Y axis|100|
+|s=x||scale=x|Scaling between each calculation dot|((min - max) / 2000)|
 
 The plot is a SVG file created at `charts/{output}.svg`
 

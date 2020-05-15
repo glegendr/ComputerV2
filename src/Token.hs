@@ -4,6 +4,7 @@ module Token
 , appMult
 , appDiv
 , getPrecedence
+, getPrecedenceOp
 , makeOp
 , toToken
 , floatToToken
@@ -36,9 +37,12 @@ getPrecedence x
     | x == Op Minus = 2
     | x == Op Mult = 3
     | x == Op Div = 3
-    | x == Op Pow = 4
+    | x == Op Pow = 5
     | x == Op Mod = 4
     | otherwise = 0
+
+getPrecedenceOp :: Operator -> Int
+getPrecedenceOp x = getPrecedence (Op x)
 
 powToken :: Token -> Token -> Token
 powToken hx@(Numb x x1) (Numb y y1)
@@ -50,7 +54,7 @@ powToken hx@(Numb x x1) (Numb y y1)
 
 addToken :: Token -> Token -> Token
 addToken (Numb x x1) (Numb y y1)
-    | x + y == 0 && x1 == y1 = Numb 0 0
+    | x + y == 0 && x1 == y1 = Numb 0 x1
     | x1 /= y1 = Numb x x1
     | otherwise = Numb (x + y) x1
 addToken _ _ = UnParsed
