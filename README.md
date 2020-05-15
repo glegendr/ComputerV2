@@ -56,7 +56,7 @@ Functions:
   6.0myvariablename 
 ```
 
-If you create a function that already exist, the older one will be overwritten.
+If you create a variable that already exist, the older one will be overwritten.
 ## Computation
 ```> {computationA} = {computationB} ?```   
 The computation part allows you to:
@@ -67,7 +67,7 @@ The computation part allows you to:
 ```
 > 43 + 53/2 = ?
   69.5
-> [[1.0,2.0,3.0],[4.0,5.0,6.0]]** [[1];[2];[3]] = [[14.0],[32.0]] ?
+> [[1.0,2.0,3.0],[4.0,5.0,6.0]]** [[1];[2];[3]] = [[14.0];[32.0]] ?
   True
 > 4x + 32 - 2x^2 = 0 ?
   Reduced Form: -2.0x^2 + 4.0x + 32.0 = 0
@@ -157,8 +157,8 @@ The show command creates a plot of the given fuction
 |t=x||title=x|Title of the graph|Creation date or `output` if set|
 |||min=x|Start of the X axis|-100|
 |||max=x|End of the X axis|100|
-|||down=x|Start of the Y axis|-Infinity|
-|||up=x|End of the Y axis|Infinity|
+|||down=x|Start of the Y axis|-∞|
+|||up=x|End of the Y axis|∞|
 |s=x||scale=x|Scaling between each calculation dot|((min - max) / 2000)|
 
 The plot is a SVG file created at `charts/{output}.svg`
@@ -180,9 +180,8 @@ where
 ```
 
 ### Quit Command
-```> quit```
-Self explanatory command.    
-It quit the program.
+```> quit```    
+Quit the program.
 
 ## Author
 [@glegendr](https://github.com/glegendr/)
