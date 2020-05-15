@@ -163,6 +163,22 @@ The show command creates a plot of the given fuction
 
 The plot is a SVG file created at `charts/{output}.svg`
 
+For example, the command    
+```> show:function=f:min=-7.5:max=7.4:down=-20:up=20:title=boomerang:scale=0.0025```     
+would display:  
+![](charts/boomerang.svg)    
+You can also use more than one function as:     
+```> show:function=f,z:min=-7.5:max=7.4:down=-20:up=20:title=star:scale=0.0025```     
+would display:    
+![](charts/star.svg)       
+where
+```
+> f(x) = 1/x
+  x^-1 
+> z(x) = -1/x
+  -x^-1
+```
+
 ### Quit Command
 ```> quit```
 Self explanatory command.    
