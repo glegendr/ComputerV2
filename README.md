@@ -167,6 +167,7 @@ For example, the command
 ```> show:function=f:min=-7.5:max=7.4:down=-20:up=20:title=boomerang:scale=0.0025```     
 would display:  
 ![](charts/boomerang.svg)    
+<<<<<<< HEAD
 You can also use more than one function as:     
 ```> show:function=f,z:min=-7.5:max=7.4:down=-20:up=20:title=star:scale=0.0025```     
 would display:    
@@ -178,6 +179,10 @@ where
 > z(x) = -1/x
   -x^-1
 ```
+=======
+You can also use more than one function as `show:function=f,z:min=-7.5:max=7.4:down=-20:up=20:title=star:scale=0.0025` would display:    
+![](charts/star.svg)
+>>>>>>> 9c06813... Docs: change charts presentation
 
 ### Quit Command
 ```> quit```
