@@ -153,8 +153,8 @@ The show command creates a plot of the given fuction
 |Short|Medium|Long|Description|Default|
 |:-:|:-:|:-:|:-:|:-:|
 |f=x,y..|fct=x,y..|function=x,y..|Function to display||
-|o=x|out=x|output=x|Name of created file|Crearion date or `title` if set|
-|t=x||title=x|Title of the graph|Crearion date or `output` if set|
+|o=x|out=x|output=x|Name of created file|Creation date or `title` if set|
+|t=x||title=x|Title of the graph|Creation date or `output` if set|
 |||min=x|Start of the X axis|-100|
 |||max=x|End of the X axis|100|
 |||down=x|Start of the Y axis|-Infinity|
