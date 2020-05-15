@@ -153,8 +153,8 @@ showHelp =
         sh3 = "\n  | <title=x>/<t=x> Title of the graph. Default is the crearion date"
         sh4 = "\n  | <min=x> Start of the X axis. Default is -100"
         sh5 = "\n  | <max=x> End of the X axis. Default is 100"
-        sh6 = "\n  | <down=x> Start of the Y axis. Default is -100"
-        sh7 = "\n  | <up=x> End of the Y axis. Default is 100"
+        sh6 = "\n  | <down=x> Start of the Y axis. Default is -Infinity"
+        sh7 = "\n  | <up=x> End of the Y axis. Default is Infinity"
         sh8 = "\n  | <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
     in ini ++ sh1 ++ sh2 ++ sh3 ++ sh4 ++ sh5 ++ sh6 ++ sh7 ++ sh8
 
@@ -196,8 +196,8 @@ commandsHelp =
         sh3 = "\n  | | | <title=x>/<t=x> Title of the graph. Default is the crearion date"
         sh4 = "\n  | | | <min=x> Start of the X axis. Default is -100"
         sh5 = "\n  | | | <max=x> End of the X axis. Default is 100"
-        sh6 = "\n  | | | <down=x> Start of the Y axis. Default is -100"
-        sh7 = "\n  | | | <up=x> End of the Y axis. Default is 100"
+        sh6 = "\n  | | | <down=x> Start of the Y axis. Default is -Infinity"
+        sh7 = "\n  | | | <up=x> End of the Y axis. Default is Infinity"
         sh8 = "\n  | | / <scale=x>/<s=x> Scaling between each calculation dot. Default is ((min - max) / 1000)"
         fm2 = "\n  | + (comandName):"
         qit = "\n  | | + quit: quit the program"
@@ -281,8 +281,8 @@ showPlot optionStr hm = do
         let title = getFirst out [y | (x, y) <- newLst, x == "title" || x == "t"]
         let min = getNum (-100) [y | (x, y) <- newLst, x == "min"]
         let max = getNum 100 [y | (x, y) <- newLst, x == "max"]
-        let down = getNum (-100) [y | (x, y) <- newLst, x == "down"]
-        let up = getNum (100) [y | (x, y) <- newLst, x == "up"]
+        let down = getNum (-999^999) [y | (x, y) <- newLst, x == "down"]
+        let up = getNum (999^999) [y | (x, y) <- newLst, x == "up"]
         let scale = abs $ getNum ((min - max) / 2000) [y | (x, y) <- newLst, x == "scale" || x == "s"]
         let trueOut = if (out == defName && title /= defName)
             then title
