@@ -9,6 +9,7 @@ import Var
 import Data.HashMap.Strict as Hm (HashMap, member, (!))
 import Parsing
 import CalcExpo
+import Debug.Trace
 
 printEnd :: [Token] -> String
 printEnd tkLst =
@@ -56,7 +57,7 @@ checkCompute lst hm
         ret <- checkType ((Var "z"):(Op OpenBracket):(Var "x"):(Op CloseBracket):(Op Equal):lst) hm
         case ret of
             Fct _ _ tk -> return $ case (toVar ret lst hm) of
-                Fct _ _ tk -> map tokenToCompute tk
+                Fct _ _ tk-> map tokenToCompute tk
                 _ -> [CUnknown "Error: Computation failed"]
             _ -> return [CUnknown "Error: Computation failed"]
 

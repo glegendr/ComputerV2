@@ -236,7 +236,10 @@ checkFunction var lst hm name
         newLst = toBasictoken hm lst var
 
 toFct :: [Token] -> HashMap String Var -> String -> [Token]
-toFct lst hm var = makeItRedable $ intersperse (Op Add) $ addAll $ filter isNumb $ solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst var
+toFct lst hm var =
+    let polished = solvePolish $ delBracket $ smallReduce $ toBasictoken hm lst var
+        ret = makeItRedable $ intersperse (Op Add) $ addAll $ filter isNumb polished
+    in ret
 
 {-- MANAGER --}
 
@@ -306,7 +309,7 @@ toBasictoken :: HashMap String Var -> [Token] -> String -> [Token]
 toBasictoken hm tk except = 
     let maped = foldl (\acc x -> acc ++ varToToken hm except x) [] (transformFct tk)
         ret = case maped of
-            ((Op Minus):x1@(Numb _ _):xs) -> appMinus x1 : xs
+            ((Op Minus):x1@(Numb _ _):xs) ->  (Numb (-1) 0) : (Op Mult) : x1 : xs
             _ -> maped
     in toBasictoken2 ret
     where

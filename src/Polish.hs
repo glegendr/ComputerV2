@@ -31,7 +31,9 @@ allLeft (a@(Op _ ):x@(Op OpenBracket):xs) True = appMinus a : x : take (findClos
 allLeft ((Op Add):x1:xs) True = Op Add : appMinus x1 : allLeft xs True
 allLeft ((Op Minus):x1:xs) True = Op Add : x1 : allLeft xs True
 allLeft ((Op x):x1:xs) True = Op x : x1 : allLeft xs True
-allLeft ((Op Minus):x1:xs) False = Op Add : appMinus x1 : allLeft xs False
+allLeft ((Op Minus):a@(Numb x y):xs) False
+    | y == 0 = Op Add : appMinus a : allLeft xs False
+    | otherwise = Op Add : Numb (-1) 0 : Op Mult : a : allLeft xs False
 allLeft (x:xs) False = x : allLeft xs False
 allLeft (x:xs) _ = error $ show x
 
