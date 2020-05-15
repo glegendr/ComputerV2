@@ -75,9 +75,14 @@ smallReduce x = smallReduce2 [] x
             | getPrecedence b >= getPrecedence d && isCompatible (a, c, b) = smallReduce (ret ++ ((getOp b) a c : d : xs))
         smallReduce2 ret (x:xs) = smallReduce2 (ret ++ [x]) xs
 
+multBracket :: [Token] -> [Token]
+multBracket [] = []
+multBracket (a@(Op CloseBracket):b@(Op OpenBracket):xs) = a : Op Mult : b : multBracket xs
+multBracket (x:xs) = x : multBracket xs
+
 delBracket :: [Token] -> [Token]
 delBracket [] = []
-delBracket lst =
+delBracket rawLst =
     if ((length $ filter (== (Op OpenBracket)) inBr) > 1)
     then delBracket $ befBr ++ ((Op OpenBracket) : (delBracket (tail $ init $ inBr)) ++ [Op CloseBracket]) ++ aftBr
     else if (inBr == [Op CloseBracket])
@@ -90,6 +95,7 @@ delBracket lst =
         let (d, ret) = resolveOpBracket (transformInBracket inBr) op2 value2 False
         in delBracket (befBr ++ ret ++ (drop d aftBr))
     where
+            lst = multBracket rawLst
             befBr = takeWhile (/= Op OpenBracket) lst
             rawAftBr = drop (findCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst
             rawInBr = (take (findCloseBr (dropWhile (/= Op OpenBracket) lst)) $ dropWhile (/= Op OpenBracket) lst) ++ [Op CloseBracket]
@@ -139,7 +145,10 @@ delBracket lst =
                 | v == 1 && x == 0 = (2, lst)
                 | otherwise = (2, (Op OpenBracket) : map (appMult value) (tail $ init $ lst) ++ [Op CloseBracket])
             resolveOpBracket lst (Op Mult) (Op OpenBracket) _ =
-                let multBy = take (findCloseBr $ tail aftBr) (tail $ aftBr) ++ [Op CloseBracket]
+                let secOp = last $ take (findCloseBr (tail aftBr) + 2) (tail $ aftBr)
+                    multBy = if (secOp /= Op Pow)
+                        then take (findCloseBr (tail aftBr) + 1) (tail $ aftBr)
+                        else take (findCloseBr (tail aftBr) + 3) (tail $ aftBr)
                     size = length multBy
                 in (size + 1, multBr lst (delBracket multBy))
             resolveOpBracket lst (Op Div) value@(Numb v _) True
