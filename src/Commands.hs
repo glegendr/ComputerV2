@@ -286,7 +286,7 @@ showPlot optionStr hm = do
         let scale = abs $ getNum ((min - max) / 2000) [y | (x, y) <- newLst, x == "scale" || x == "s"]
         let trueOut = if (out == defName && title /= defName)
             then title
-            else defName
+            else out
         putStrLn $ "  Out:      " ++ trueOut
         putStrLn $ "  Title:    " ++ title
         putStrLn $ "  Function: " ++ show fct
