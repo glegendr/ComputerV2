@@ -1,7 +1,10 @@
 # computerV2
 ## Dependencies
-The only dependencies you need are haskell and stack.  
-To get them, check https://www.haskell.org/platform/ 
+The dependencies you need are haskell and stack.  
+To get them, check https://www.haskell.org/platform/    
+You also need cairo:
+- `sudo apt-get install libghc-cairo-dev` for ubuntu
+- `brew install cairo` for MacOS
 ## Project
 To start the project use:  
 ``` git clone https://github.com/glegendr/ComputerV2.git; cd ComputerV2; sh compile.sh ```  
@@ -141,7 +144,7 @@ The del command delete a named variable or a pull of variables
 ### Replace Command
 ```> replace:{replaceArgs}```    
 The replace command replace the name of a variable by another.    
-If the chosen name is already in a variable, the names will swap each other.
+If the chosen name is already a variable, the two names will swap each other.
 
 The only argument taken by replace is the current name of the variable and the new one.
 - X:Y Replace var name X by Y. If Y exist the 2 name are swapping
