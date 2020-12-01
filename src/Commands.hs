@@ -149,8 +149,8 @@ replaceHelp =
 showHelp =
     let ini = "\n  + show: Create a plot"
         sh1 = "\n  | <f=x,y..>/<fct=x,y..>/<function=x,y..> Function to display"
-        sh2 = "\n  | <o=x>/<out=x>/<output=x> Name of created file. Default is the crearion date"
-        sh3 = "\n  | <title=x>/<t=x> Title of the graph. Default is the crearion date"
+        sh2 = "\n  | <o=x>/<out=x>/<output=x> Name of created file. Default is the creation date"
+        sh3 = "\n  | <title=x>/<t=x> Title of the graph. Default is the creation date"
         sh4 = "\n  | <min=x> Start of the X axis. Default is -100"
         sh5 = "\n  | <max=x> End of the X axis. Default is 100"
         sh6 = "\n  | <down=x> Start of the Y axis. Default is -Infinity"
