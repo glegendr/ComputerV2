@@ -72,6 +72,7 @@ multToken (Numb x x1) (Numb y y1) = Numb (x * y) (x1 + y1)
 
 modToken :: Token -> Token -> Token
 modToken (Numb x x1) (Numb y y1)
+    | y == 0 = UnParsed
     | x > 0 = Numb (mod' x y) x1
     | otherwise = Numb (-(mod' (-x) y)) x1
 

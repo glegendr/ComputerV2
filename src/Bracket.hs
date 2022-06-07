@@ -151,6 +151,8 @@ delBracket rawLst =
                         else take (findCloseBr (tail aftBr) + 3) (tail $ aftBr)
                     size = length multBy
                 in (size + 1, multBr lst (delBracket multBy))
+            resolveOpBracket lst (Op Mod) value@(Numb v _) True
+                | v == 0 = (2, [UnParsed])
             resolveOpBracket lst (Op Div) value@(Numb v _) True
                 | v == 0 = (2, [Numb 0 0])
                 | otherwise = (2, (Op OpenBracket) : intersperse (Op Add) (map (\x -> appDiv value x) (filter isNumb $ toPositiv $ tail $ init $ lst)) ++ [Op CloseBracket])
