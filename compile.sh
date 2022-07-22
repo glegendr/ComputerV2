@@ -1,1 +1,1 @@
-stack build && stack ghc src/main.hs -- -O2 -threaded -rtsopts && rm src/*.o src/*.hi && mv src/main ComputerV2
+../stack-2.7.5-linux-x86_64/stack build && ../stack-2.7.5-linux-x86_64/stack ghc src/main.hs -- -O2 -threaded -rtsopts && rm src/*.o src/*.hi && mv src/main ComputerV2
